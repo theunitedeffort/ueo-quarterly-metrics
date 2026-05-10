@@ -45,7 +45,51 @@ test('buildMetricsTable calculates the uploaded-file quarterly metrics', () => {
       { 'Start Date': '01/05/2026', 'Program Enrolled': 'PSH' },
       { 'Start Date': '02/10/2026', 'Program Enrolled': 'CalFresh applications' },
       { 'Start Date': '03/20/2026', 'Program Enrolled': 'Home sharing' },
-      { 'Start Date': '03/25/2026', 'Program Enrolled': 'UPLIFT' }
+      {
+        'Start Date': '03/22/2026',
+        'Program Enrolled': 'Housing Solutions - Affordable Housing Waitlist Application'
+      },
+      { 'Start Date': '03/25/2026', 'Program Enrolled': 'UPLIFT Pass' },
+      { 'Start Date': '03/26/2026', 'Program Enrolled': 'MyConnectSV' },
+      { 'Start Date': '03/27/2026', 'Program Enrolled': 'LifeLine Phone' }
+    ],
+    housed: [
+      {
+        Name: 'client-a',
+        'Date Housed': '01/15/2026',
+        PSH: '2',
+        HCV: '',
+        VASH: '',
+        RRH: '',
+        'Home Sharing': '',
+        'Affordable Apt': '',
+        'Section 8 Interest List': '',
+        'Commercial Rate': ''
+      },
+      {
+        Name: 'client-b',
+        'Date Housed': '03/18/2026',
+        PSH: '',
+        HCV: '',
+        VASH: '',
+        RRH: '',
+        'Home Sharing': '',
+        'Affordable Apt': '3',
+        'Section 8 Interest List': '',
+        'Commercial Rate': ''
+      },
+      {
+        Name: '',
+        'Date Housed': '03/20/2026',
+        PSH: '',
+        HCV: '',
+        VASH: '',
+        RRH: '9',
+        'Home Sharing': '',
+        'Affordable Apt': '',
+        'Section 8 Interest List': '',
+        'Commercial Rate': ''
+      }
     ],
     housingApplications: [
       { 'Date Submitted': '01/12/2026 11:16am', 'Test Application': '' },
@@ -111,11 +155,42 @@ test('buildMetricsTable calculates the uploaded-file quarterly metrics', () => {
     ['Clients signed engagement letter', 2, 1, 1, 0],
     ['Active Clients', 1, 1, 0, 0],
     ['Semi-Active Clients', 1, 0, 1, 0],
-    ['Housing support', 4, 2, 0, 2],
+    ['Housing support', 5, 2, 0, 3],
+    ['Clients housed', 5, 2, 0, 3],
     ['Active Onsite Volunteers', 1, 2, 1, 1],
     ['Onsite Volunteer hours', 9.5, 6.5, 2, 1],
     ['Clients active in Self-Sufficiency Program', 2, 1, 2, 0],
-    ['Benefits and Services provided', 2, 0, 1, 1]
+    ['Benefits & services applications submitted', 2, 0, 1, 1]
+  ]);
+});
+
+test('buildMetricsTable limits output to the selected month range', () => {
+  const table = buildMetricsTable(
+    {
+      programs: [
+        { 'Start Date': '01/05/2026', 'Program Enrolled': 'CalFresh' },
+        { 'Start Date': '02/05/2026', 'Program Enrolled': 'CalFresh' },
+        { 'Start Date': '04/05/2026', 'Program Enrolled': 'CalFresh' }
+      ]
+    },
+    { year: 2026, startMonth: 2, endMonth: 4 }
+  );
+
+  assert.deepEqual(table.headers, [
+    'Type of Metric',
+    'February 2026',
+    'March 2026',
+    'April 2026'
+  ]);
+
+  const benefitsRow = table.rows.find(
+    ([name]) => name === 'Benefits & services applications submitted'
+  );
+  assert.deepEqual(benefitsRow, [
+    'Benefits & services applications submitted',
+    1,
+    0,
+    1
   ]);
 });
 

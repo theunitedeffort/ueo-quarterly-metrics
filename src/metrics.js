@@ -19,31 +19,54 @@ const METRIC_NAMES = {
   activeClients: 'Active Clients',
   semiActiveClients: 'Semi-Active Clients',
   housingSupport: 'Housing support',
+  clientsHoused: 'Clients housed',
   activeVolunteers: 'Active Onsite Volunteers',
   volunteerHours: 'Onsite Volunteer hours',
   sspActiveClients: 'Clients active in Self-Sufficiency Program',
-  benefits: 'Benefits and Services provided'
+  benefits: 'Benefits & services applications submitted'
 };
 
 const HOUSING_SUPPORT_PROGRAMS = [
   'PSH',
   'RRH',
   'HUD-VASH',
+  'VASH',
   'Section 8',
   'Deposit & first month rent',
+  'Deposit and First Month Rent',
   'Search',
   'VI-SPDAT',
   'Home sharing',
-  'Housing recertification'
+  'Home-sharing',
+  'Housing recertification',
+  'Affordable housing',
+  'Affordable Housing Waitlist Application',
+  'Permanent Supportive Housing',
+  'Rapid Rehousing'
+];
+
+const MANUALLY_ADDED_BENEFIT_PROGRAMS = [
+  'UPLIFT',
+  'MyCoonectSV',
+  'LifeLine'
 ];
 
 const HOUSING_PROGRAMS_TO_EXCLUDE_FROM_BENEFITS = [
   ...HOUSING_SUPPORT_PROGRAMS,
+  ...MANUALLY_ADDED_BENEFIT_PROGRAMS,
   'Affordable Apartment',
-  'Affordable housing applications',
-  'Permanent Supportive Housing',
-  'Rapid Rehousing',
-  'Home-sharing'
+  'Affordable housing applications'
+];
+
+const HOUSED_VALUE_COLUMNS = [
+  'PSH',
+  'HCV',
+  'VASH',
+  'RRH',
+  'Home Sharing',
+  'Affordable Apt',
+  'Section 8 Interest List',
+  'Commercial Rate'
 ];
 
 export const FILE_SPECS = {
@@ -81,6 +104,16 @@ export const FILE_SPECS = {
     tooltip:
       'Needs one row per housing application. Date Submitted can include a time, such as 01/31/2026 11:16am. Rows with Test Application marked true or checked are ignored.',
     metricUse: 'Housing support.'
+  },
+  housed: {
+    id: 'housed',
+    label: 'Housed',
+    exampleName: 'Housed.csv',
+    requiredColumns: ['Name', 'Date Housed'],
+    optionalColumns: HOUSED_VALUE_COLUMNS,
+    tooltip:
+      'Needs one row per housed client. Rows without Name are ignored. Date Housed is used for the period, and the housing columns are summed for clients housed.',
+    metricUse: 'Clients housed.'
   },
   volunteers: {
     id: 'volunteers',
@@ -240,6 +273,14 @@ function normalizeQuarter(quarter) {
   return Math.min(4, Math.max(1, Math.trunc(parsed)));
 }
 
+function normalizeMonth(month, fallback) {
+  const parsed = Number(month);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(12, Math.max(1, Math.trunc(parsed)));
+}
+
 function makeLocalDate(year, monthIndex, day, hour = 0, minute = 0, second = 0, ms = 0) {
   const date = new Date(year, monthIndex, day, hour, minute, second, ms);
   if (
@@ -331,6 +372,62 @@ function rowDateByEnd(row, columns, period) {
 }
 
 export function getQuarterPeriods(yearInput, quarterInput) {
+  const year = normalizeYear(yearInput);
+  const quarter = normalizeQuarter(quarterInput);
+  const firstMonthIndex = (quarter - 1) * 3;
+  return getMonthRangePeriods(year, firstMonthIndex + 1, firstMonthIndex + 3);
+}
+
+export function getMonthRangePeriods(yearInput, startMonthInput = 1, endMonthInput = 12) {
+  const year = normalizeYear(yearInput);
+  let startMonth = normalizeMonth(startMonthInput, 1);
+  let endMonth = normalizeMonth(endMonthInput, 12);
+  if (startMonth > endMonth) {
+    [startMonth, endMonth] = [endMonth, startMonth];
+  }
+
+  const periods = [];
+  for (let quarter = 1; quarter <= 4; quarter += 1) {
+    const firstMonth = (quarter - 1) * 3 + 1;
+    const lastMonth = quarter * 3;
+    const selectedQuarterMonths = [];
+    for (let month = firstMonth; month <= lastMonth; month += 1) {
+      if (month >= startMonth && month <= endMonth) {
+        selectedQuarterMonths.push(month);
+      }
+    }
+    if (selectedQuarterMonths.length === 0) {
+      continue;
+    }
+
+    if (selectedQuarterMonths.length === 3) {
+      const monthIndexes = [firstMonth - 1, firstMonth, firstMonth + 1];
+      periods.push({
+        label: `Q${quarter} ${year}`,
+        start: makeLocalDate(year, firstMonth - 1, 1),
+        end: endOfMonth(year, lastMonth - 1),
+        kind: 'quarter',
+        quarter,
+        monthIndexes
+      });
+    }
+
+    selectedQuarterMonths.forEach((month) => {
+      const monthIndex = month - 1;
+      periods.push({
+        label: `${MONTH_NAMES[monthIndex]} ${year}`,
+        start: makeLocalDate(year, monthIndex, 1),
+        end: endOfMonth(year, monthIndex),
+        kind: 'month',
+        monthIndex
+      });
+    });
+  }
+
+  return periods;
+}
+
+function getLegacyQuarterPeriods(yearInput, quarterInput) {
   const year = normalizeYear(yearInput);
   const quarter = normalizeQuarter(quarterInput);
   const firstMonthIndex = (quarter - 1) * 3;
@@ -479,6 +576,22 @@ function countBenefits(datasets, period) {
     period,
     (row) => !programMatches(row, HOUSING_PROGRAMS_TO_EXCLUDE_FROM_BENEFITS)
   );
+}
+
+function countClientsHoused(datasets, period) {
+  return cleanRows(datasets.housed)
+    .filter((row) => {
+      const name = String(getValue(row, 'Name') ?? '').trim();
+      return name && rowDateInRange(row, 'Date Housed', period);
+    })
+    .reduce(
+      (sum, row) =>
+        sum + HOUSED_VALUE_COLUMNS.reduce(
+          (columnSum, column) => columnSum + parseNumber(getValue(row, column)),
+          0
+        ),
+      0
+    );
 }
 
 function volunteerRowsInPeriod(rows, period) {
@@ -670,6 +783,8 @@ function valueForMetric(metricKey, datasets, period) {
       );
     case 'housingSupport':
       return countHousingSupport(datasets, period);
+    case 'clientsHoused':
+      return countClientsHoused(datasets, period);
     case 'activeVolunteers':
       return countActiveVolunteers(datasets, period);
     case 'volunteerHours':
@@ -687,7 +802,9 @@ export function buildMetricsTable(rawDatasets = {}, options = {}) {
   const datasets = Object.fromEntries(
     Object.keys(FILE_SPECS).map((key) => [key, rawDatasets[key] ?? []])
   );
-  const periods = getQuarterPeriods(options.year ?? 2026, options.quarter ?? 1);
+  const periods = options.startMonth || options.endMonth
+    ? getMonthRangePeriods(options.year ?? 2026, options.startMonth ?? 1, options.endMonth ?? 12)
+    : getLegacyQuarterPeriods(options.year ?? 2026, options.quarter ?? 1);
   const metricKeys = Object.keys(METRIC_NAMES);
 
   return {
