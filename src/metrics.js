@@ -85,7 +85,7 @@ export const FILE_SPECS = {
   volunteers: {
     id: 'volunteers',
     label: 'Event Attendance Volunteers',
-    exampleName: 'event_attendance_volunteers.csv',
+    exampleName: 'event_volunteers.csv',
     requiredColumns: ['Event Date', 'Volunteer ID'],
     optionalColumns: [
       'Shift Hours',
