@@ -18,7 +18,8 @@ const elements = {
   fileGrid: document.querySelector('#file-grid'),
   fileTemplate: document.querySelector('#file-card-template'),
   yearInput: document.querySelector('#year-input'),
-  quarterSelect: document.querySelector('#quarter-select'),
+  startMonthSelect: document.querySelector('#start-month-select'),
+  endMonthSelect: document.querySelector('#end-month-select'),
   metricsTable: document.querySelector('#metrics-table'),
   loadedSummary: document.querySelector('#loaded-summary'),
   tableStatus: document.querySelector('#table-status'),
@@ -131,7 +132,8 @@ function updateFileStatus(fileSpecId, message, tone) {
 function getPeriodOptions() {
   return {
     year: Number(elements.yearInput.value),
-    quarter: Number(elements.quarterSelect.value)
+    startMonth: Number(elements.startMonthSelect.value),
+    endMonth: Number(elements.endMonthSelect.value)
   };
 }
 
@@ -240,6 +242,7 @@ async function copyTable() {
 
 FILE_SPEC_LIST.forEach(createFileCard);
 elements.yearInput.addEventListener('input', render);
-elements.quarterSelect.addEventListener('change', render);
+elements.startMonthSelect.addEventListener('change', render);
+elements.endMonthSelect.addEventListener('change', render);
 elements.copyButton.addEventListener('click', copyTable);
 render();
