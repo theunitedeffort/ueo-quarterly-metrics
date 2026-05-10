@@ -95,16 +95,6 @@ export const FILE_SPECS = {
       'Needs one row per program enrollment. Start Date should be a date like 01/31/2026. Program Enrolled is matched against housing program names and benefit/service names.',
     metricUse: 'Housing support and benefits/services provided.'
   },
-  housingApplications: {
-    id: 'housingApplications',
-    label: 'Housing Applications',
-    exampleName: 'housing_applications.csv',
-    requiredColumns: ['Date Submitted'],
-    optionalColumns: ['Status', 'Test Application', 'On Behalf Of'],
-    tooltip:
-      'Needs one row per housing application. Date Submitted can include a time, such as 01/31/2026 11:16am. Rows with Test Application marked true or checked are ignored.',
-    metricUse: 'Housing support.'
-  },
   housed: {
     id: 'housed',
     label: 'Housed',
@@ -554,19 +544,12 @@ function programMatches(row, programs) {
 }
 
 function countHousingSupport(datasets, period) {
-  const housingProgramCount = countRows(
+  return countRows(
     datasets.programs,
     'Start Date',
     period,
     (row) => programMatches(row, HOUSING_SUPPORT_PROGRAMS)
   );
-  const housingApplicationCount = countRows(
-    datasets.housingApplications,
-    'Date Submitted',
-    period
-  );
-
-  return housingProgramCount + housingApplicationCount;
 }
 
 function countBenefits(datasets, period) {

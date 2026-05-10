@@ -91,11 +91,6 @@ test('buildMetricsTable calculates the uploaded-file quarterly metrics', () => {
         'Commercial Rate': ''
       }
     ],
-    housingApplications: [
-      { 'Date Submitted': '01/12/2026 11:16am', 'Test Application': '' },
-      { 'Date Submitted': '02/12/2026 11:16am', 'Test Application': 'checked' },
-      { 'Date Submitted': '03/18/2026 1:00pm', 'Test Application': 'False' }
-    ],
     volunteers: [
       {
         'Event Date': '01/03/2026',
@@ -155,7 +150,7 @@ test('buildMetricsTable calculates the uploaded-file quarterly metrics', () => {
     ['Clients signed engagement letter', 2, 1, 1, 0],
     ['Active Clients', 1, 1, 0, 0],
     ['Semi-Active Clients', 1, 0, 1, 0],
-    ['Housing support', 5, 2, 0, 3],
+    ['Housing support', 3, 1, 0, 2],
     ['Clients housed', 5, 2, 0, 3],
     ['Active Onsite Volunteers', 1, 2, 1, 1],
     ['Onsite Volunteer hours', 9.5, 6.5, 2, 1],
