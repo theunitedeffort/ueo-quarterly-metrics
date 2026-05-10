@@ -75,7 +75,7 @@ export const FILE_SPECS = {
   housingApplications: {
     id: 'housingApplications',
     label: 'Housing Applications',
-    exampleName: 'housing_applications_post_nov_2025.csv',
+    exampleName: 'housing_applications.csv',
     requiredColumns: ['Date Submitted'],
     optionalColumns: ['Status', 'Test Application', 'On Behalf Of'],
     tooltip:
