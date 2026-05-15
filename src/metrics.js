@@ -47,7 +47,7 @@ const HOUSING_SUPPORT_PROGRAMS = [
 
 const MANUALLY_ADDED_BENEFIT_PROGRAMS = [
   'UPLIFT',
-  'MyCoonectSV',
+  'MyConnectSV',
   'LifeLine'
 ];
 
@@ -162,6 +162,26 @@ export const FILE_SPECS = {
     tooltip:
       'Alternative SSP input when you have a client-level export instead of individual assessment and interaction records. Latest SSP Activity Time is preferred for activity by period.',
     metricUse: 'Clients active in Self-Sufficiency Program.'
+  },
+  housingApplications: {
+    id: 'housingApplications',
+    label: 'Housing Applications (optional)',
+    exampleName: 'clients_waitlist_applications.csv',
+    requiredColumns: ['Date Submitted'],
+    optionalColumns: ['First', 'Last', 'Apartment Name', 'Waitlist Application Submission'],
+    tooltip:
+      'Optional. One row per housing/waitlist application submitted on behalf of a client. Date Submitted should be a date like 03/07/2025. Each row in the period is added to Housing support.',
+    metricUse: 'Added to Housing support.'
+  },
+  benefitsSupplement: {
+    id: 'benefitsSupplement',
+    label: 'Benefits Supplement (optional)',
+    exampleName: '2025_benefits.csv',
+    requiredColumns: ['Month'],
+    optionalColumns: ['UPLIFT', 'MyConnectSV', 'LifeLine'],
+    tooltip:
+      'Optional. Monthly tallies for UPLIFT, MyConnectSV, LifeLine, etc. Month should be parseable like 2025-01, January 2025, or 1/2025. All other numeric columns are summed for months that fall in the period and added to Benefits.',
+    metricUse: 'Added to Benefits & services applications submitted.'
   }
 };
 
@@ -345,6 +365,42 @@ export function parseDateValue(value) {
 
   const parsed = new Date(normalized);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+const MONTH_NAME_INDEX = MONTH_NAMES.reduce((map, name, index) => {
+  map[name.toLowerCase()] = index;
+  map[name.slice(0, 3).toLowerCase()] = index;
+  return map;
+}, {});
+
+export function parseMonthValue(value) {
+  const raw = String(value ?? '').trim();
+  if (raw) {
+    const yearMonth = raw.match(/^(\d{4})[-/](\d{1,2})$/);
+    if (yearMonth) {
+      return makeLocalDate(Number(yearMonth[1]), Number(yearMonth[2]) - 1, 1);
+    }
+
+    const monthYear = raw.match(/^(\d{1,2})[-/](\d{4})$/);
+    if (monthYear) {
+      return makeLocalDate(Number(monthYear[2]), Number(monthYear[1]) - 1, 1);
+    }
+
+    const named = raw.match(/^([A-Za-z]+)[\s,]+(\d{4})$/);
+    if (named) {
+      const monthIndex = MONTH_NAME_INDEX[named[1].toLowerCase()];
+      if (monthIndex !== undefined) {
+        return makeLocalDate(Number(named[2]), monthIndex, 1);
+      }
+    }
+  }
+
+  const date = parseDateValue(value);
+  if (date) {
+    return makeLocalDate(date.getFullYear(), date.getMonth(), 1);
+  }
+
+  return null;
 }
 
 function isInRange(date, period) {
@@ -543,22 +599,50 @@ function programMatches(row, programs) {
   return programs.some((program) => value.includes(program.toLowerCase()));
 }
 
+function countHousingApplications(datasets, period) {
+  return countRows(datasets.housingApplications, 'Date Submitted', period);
+}
+
 function countHousingSupport(datasets, period) {
-  return countRows(
+  const enrollments = countRows(
     datasets.programs,
     'Start Date',
     period,
     (row) => programMatches(row, HOUSING_SUPPORT_PROGRAMS)
   );
+  return enrollments + countHousingApplications(datasets, period);
+}
+
+function monthInPeriod(monthValue, period) {
+  const date = parseMonthValue(monthValue);
+  return date !== null && date >= period.start && date <= period.end;
+}
+
+function sumBenefitsSupplement(datasets, period) {
+  const rows = cleanRows(datasets.benefitsSupplement);
+  let total = 0;
+  for (const row of rows) {
+    if (!monthInPeriod(getValue(row, 'Month'), period)) {
+      continue;
+    }
+    for (const [key, value] of Object.entries(row)) {
+      if (columnKey(key) === 'month') {
+        continue;
+      }
+      total += parseNumber(value);
+    }
+  }
+  return total;
 }
 
 function countBenefits(datasets, period) {
-  return countRows(
+  const programBenefits = countRows(
     datasets.programs,
     'Start Date',
     period,
     (row) => !programMatches(row, HOUSING_PROGRAMS_TO_EXCLUDE_FROM_BENEFITS)
   );
+  return programBenefits + sumBenefitsSupplement(datasets, period);
 }
 
 function countClientsHoused(datasets, period) {
