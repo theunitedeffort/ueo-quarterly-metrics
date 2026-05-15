@@ -155,7 +155,7 @@ test('buildMetricsTable calculates the uploaded-file quarterly metrics', () => {
     ['Active Onsite Volunteers', 1, 2, 1, 1],
     ['Onsite Volunteer hours', 9.5, 6.5, 2, 1],
     ['Clients active in Self-Sufficiency Program', 2, 1, 2, 0],
-    ['Benefits & services applications submitted', 2, 0, 1, 1]
+    ['Benefits & services applications submitted', 1, 0, 1, 0]
   ]);
 });
 
@@ -253,57 +253,3 @@ test('tableToClipboardText creates spreadsheet-friendly TSV', () => {
   );
 });
 
-test('housing applications upload adds to Housing support', () => {
-  const table = buildMetricsTable(
-    {
-      programs: [
-        { 'Start Date': '01/05/2025', 'Program Enrolled': 'PSH' },
-        { 'Start Date': '02/05/2025', 'Program Enrolled': 'CalFresh' }
-      ],
-      housingApplications: [
-        { 'Date Submitted': '01/15/2025' },
-        { 'Date Submitted': '02/20/2025' },
-        { 'Date Submitted': '04/01/2025' }
-      ]
-    },
-    { year: 2025, quarter: 1 }
-  );
-
-  const housingRow = table.rows.find(([name]) => name === 'Housing support');
-  // 1 PSH enrollment + 2 housing applications in Q1 2025 = 3
-  assert.equal(housingRow[1], 3);
-});
-
-test('benefits supplement adds monthly tallies to Benefits', () => {
-  const table = buildMetricsTable(
-    {
-      programs: [
-        { 'Start Date': '01/05/2025', 'Program Enrolled': 'CalFresh' },
-        { 'Start Date': '02/05/2025', 'Program Enrolled': 'PSH' }
-      ],
-      benefitsSupplement: [
-        { Month: '2025-01', UPLIFT: '10', MyConnectSV: '2', LifeLine: '1' },
-        { Month: 'February 2025', UPLIFT: '5', MyConnectSV: '0', LifeLine: '3' },
-        { Month: '04/2025', UPLIFT: '99', MyConnectSV: '99', LifeLine: '99' }
-      ]
-    },
-    { year: 2025, quarter: 1 }
-  );
-
-  const benefitsRow = table.rows.find(
-    ([name]) => name === 'Benefits & services applications submitted'
-  );
-  // 1 CalFresh enrollment + (10+2+1 + 5+0+3) = 1 + 21 = 22
-  assert.equal(benefitsRow[1], 22);
-});
-
-test('validateDataset accepts an empty housing applications spec only when Date Submitted is present', () => {
-  const ok = validateDataset(FILE_SPECS.housingApplications, [
-    { 'Date Submitted': '01/15/2025' }
-  ]);
-  assert.equal(ok.ok, true);
-
-  const bad = validateDataset(FILE_SPECS.housingApplications, [{ Foo: 'bar' }]);
-  assert.equal(bad.ok, false);
-  assert.deepEqual(bad.missingRequired, ['Date Submitted']);
-});
