@@ -155,7 +155,11 @@ test('buildMetricsTable calculates the uploaded-file quarterly metrics', () => {
     ['Active Onsite Volunteers', 1, 2, 1, 1],
     ['Onsite Volunteer hours', 9.5, 6.5, 2, 1],
     ['Clients active in Self-Sufficiency Program', 2, 1, 2, 0],
-    ['Benefits & services applications submitted', 1, 0, 1, 0]
+    ['Benefits & services applications submitted', 1, 0, 1, 0],
+    ['VI-SPDAT', 0, 0, 0, 0],
+    ['Lifeline phone giveaway', 0, 0, 0, 0],
+    ['ID fee waiver', 0, 0, 0, 0],
+    ['Employment support provided', 0, 0, 0, 0]
   ]);
 });
 
@@ -251,5 +255,67 @@ test('tableToClipboardText creates spreadsheet-friendly TSV', () => {
     text,
     'Type of Metric\tQ1 2026\nHousing support\t4\nOnsite Volunteer hours\t5.50'
   );
+});
+
+test('housing applications, ID fee waivers, and lifeline phone lists are counted correctly', () => {
+  const datasets = {
+    programs: [
+      { 'Start Date': '01/05/2026', 'Program Enrolled': 'PSH' },
+      { 'Start Date': '02/10/2026', 'Program Enrolled': 'Housing Solutions - VI-SPDAT' }
+    ],
+    housingApplications: [
+      { 'Date Submitted': '01/15/2026', 'Test Application': '' },
+      { 'Date Submitted': '02/20/2026', 'Test Application': 'Yes' },
+      { 'Date Submitted': '02/25/2026', 'Test Application': 'no' }
+    ],
+    idFeeWaiver: [
+      { 'Timestamp': '01/04/2026 9:09:45', 'Client\'s First Name': 'A' },
+      { 'Timestamp': '02/11/2026 14:57:59', 'Client\'s First Name': 'B' }
+    ],
+    lifelinePhone: [
+      { Category: 'Monthly Total Applications', 'January 2026': '10', 'February 2026': '20' },
+      { Category: 'Monthly Total Completed', 'January 2026': '5', 'February 2026': '8' }
+    ]
+  };
+
+  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
+
+  const housingSupportRow = table.rows.find(([name]) => name === 'Housing support');
+  assert.deepEqual(housingSupportRow, ['Housing support', 4, 2, 2, 0]);
+
+  const viSpdatRow = table.rows.find(([name]) => name === 'VI-SPDAT');
+  assert.deepEqual(viSpdatRow, ['VI-SPDAT', 1, 0, 1, 0]);
+
+  const idWaiverRow = table.rows.find(([name]) => name === 'ID fee waiver');
+  assert.deepEqual(idWaiverRow, ['ID fee waiver', 2, 1, 1, 0]);
+
+  const lifelineRow = table.rows.find(([name]) => name === 'Lifeline phone giveaway');
+  assert.deepEqual(lifelineRow, ['Lifeline phone giveaway', 13, 5, 8, 0]);
+
+  const benefitsRow = table.rows.find(([name]) => name === 'Benefits & services applications submitted');
+  assert.deepEqual(benefitsRow, ['Benefits & services applications submitted', 16, 6, 10, 0]);
+});
+
+test('parseCsv maps empty headers to Category/Column keys', () => {
+  const parsed = parseCsv(',,Jan 2026\nApp,Sub,43\nComp,Sub,27\n');
+  assert.deepEqual(parsed, [
+    { Category: 'App', Column_1: 'Sub', 'Jan 2026': '43' },
+    { Category: 'Comp', Column_1: 'Sub', 'Jan 2026': '27' }
+  ]);
+});
+
+test('employment support report counts enrollments correctly based on fallback dates', () => {
+  const datasets = {
+    employmentSupport: [
+      { 'Enrollment Start Date': '2026-01-15', 'Last Tagged Interaction At': '' },
+      { 'Enrollment Start Date': '', 'Last Tagged Interaction At': '2026-02-10T12:00:00.000Z' },
+      { 'Enrollment Start Date': '', 'Last Tagged Interaction At': '' },
+      { 'Enrollment Start Date': '2026-04-01', 'Last Tagged Interaction At': '' }
+    ]
+  };
+
+  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
+  const row = table.rows.find(([name]) => name === 'Employment support provided');
+  assert.deepEqual(row, ['Employment support provided', 2, 1, 1, 0]);
 });
 

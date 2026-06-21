@@ -23,7 +23,11 @@ const METRIC_NAMES = {
   activeVolunteers: 'Active Onsite Volunteers',
   volunteerHours: 'Onsite Volunteer hours',
   sspActiveClients: 'Clients active in Self-Sufficiency Program',
-  benefits: 'Benefits & services applications submitted'
+  benefits: 'Benefits & services applications submitted',
+  viSpdat: 'VI-SPDAT',
+  lifelinePhone: 'Lifeline phone giveaway',
+  idFeeWaiver: 'ID fee waiver',
+  employmentSupport: 'Employment support provided'
 };
 
 const HOUSING_SUPPORT_PROGRAMS = [
@@ -162,6 +166,46 @@ export const FILE_SPECS = {
     tooltip:
       'Alternative SSP input when you have a client-level export instead of individual assessment and interaction records. Latest SSP Activity Time is preferred for activity by period.',
     metricUse: 'Clients active in Self-Sufficiency Program.'
+  },
+  housingApplications: {
+    id: 'housingApplications',
+    label: 'Housing Applications (optional)',
+    exampleName: 'Housing_Applications_anonymized.csv',
+    requiredColumns: ['Date Submitted'],
+    optionalColumns: ['Name', 'Status', 'Test Application'],
+    tooltip:
+      'Optional. One row per housing/waitlist application submitted on behalf of a client. Date Submitted should be a date/time. Row count in the period is added to Housing support.',
+    metricUse: 'Added to Housing support.'
+  },
+  idFeeWaiver: {
+    id: 'idFeeWaiver',
+    label: 'ID Fee Waiver (optional)',
+    exampleName: 'ID_Fee_Waiver_Tracking__Responses.csv',
+    requiredColumns: ['Timestamp'],
+    optionalColumns: [],
+    tooltip:
+      'Optional. One row per ID fee waiver. Timestamp should be a date/time. Row count in the period is added to Benefits & services applications submitted and broken down.',
+    metricUse: 'Added to Benefits & services applications submitted and broken down.'
+  },
+  lifelinePhone: {
+    id: 'lifelinePhone',
+    label: 'LifeLine Phone List (optional)',
+    exampleName: 'LifeLine Phone List.csv',
+    requiredColumns: [],
+    optionalColumns: [],
+    tooltip:
+      'Optional. Contains monthly totals. Row with category "Monthly Total Completed" is summed for the period and added to Benefits & services applications submitted.',
+    metricUse: 'Added to Benefits & services applications submitted and broken down.'
+  },
+  employmentSupport: {
+    id: 'employmentSupport',
+    label: 'Employment Support Engagement Report (optional)',
+    exampleName: 'employment_support_engagement_report_anonymized.csv',
+    requiredColumns: [],
+    optionalColumns: ['Enrollment Start Date', 'Last Tagged Interaction At'],
+    tooltip:
+      'Optional. One row per client enrollment. Enrollment Start Date or Last Tagged Interaction At is used as the date. Rows without a valid date are not counted.',
+    metricUse: 'Employment support provided.'
   }
 };
 
@@ -539,9 +583,8 @@ export function parseCsv(text) {
   return nonEmptyRows.slice(1).map((cells) => {
     const record = {};
     headers.forEach((header, index) => {
-      if (header) {
-        record[header] = cells[index] ?? '';
-      }
+      const key = header || (index === 0 ? 'Category' : `Column_${index}`);
+      record[key] = cells[index] ?? '';
     });
     return record;
   });
@@ -579,22 +622,79 @@ function programMatches(row, programs) {
   return programs.some((program) => value.includes(program.toLowerCase()));
 }
 
+function countHousingApplications(datasets, period) {
+  return countRows(datasets.housingApplications, 'Date Submitted', period);
+}
+
 function countHousingSupport(datasets, period) {
-  return countRows(
+  const enrollments = countRows(
     datasets.programs,
     'Start Date',
     period,
     (row) => programMatches(row, HOUSING_SUPPORT_PROGRAMS)
   );
+  return enrollments + countHousingApplications(datasets, period);
+}
+
+function countViSpdat(datasets, period) {
+  return countRows(
+    datasets.programs,
+    'Start Date',
+    period,
+    (row) => programMatches(row, ['VI-SPDAT'])
+  );
+}
+
+function countIdFeeWaiver(datasets, period) {
+  return countRows(datasets.idFeeWaiver, 'Timestamp', period);
+}
+
+function countLifelinePhone(datasets, period) {
+  const rows = cleanRows(datasets.lifelinePhone);
+  let total = 0;
+  const targetRow = rows.find(
+    (row) => String(getValue(row, 'Category') ?? '').trim() === 'Monthly Total Completed'
+  );
+  if (!targetRow) {
+    return 0;
+  }
+
+  const year = period.start.getFullYear();
+  const monthIndexes = period.kind === 'month' ? [period.monthIndex] : period.monthIndexes;
+  for (const mIndex of monthIndexes) {
+    const monthName = MONTH_NAMES[mIndex];
+    const columnName = `${monthName} ${year}`;
+    const val = getValue(targetRow, columnName);
+    total += parseNumber(val);
+  }
+  return total;
 }
 
 function countBenefits(datasets, period) {
-  return countRows(
+  const programBenefits = countRows(
     datasets.programs,
     'Start Date',
     period,
     (row) => !programMatches(row, HOUSING_PROGRAMS_TO_EXCLUDE_FROM_BENEFITS)
   );
+  return (
+    programBenefits +
+    countViSpdat(datasets, period) +
+    countIdFeeWaiver(datasets, period) +
+    countLifelinePhone(datasets, period)
+  );
+}
+
+function countEmploymentSupport(datasets, period) {
+  const rows = cleanRows(datasets.employmentSupport);
+  return rows.filter((row) => {
+    let dateVal = getValue(row, 'Enrollment Start Date');
+    if (isBlank(dateVal)) {
+      dateVal = getValue(row, 'Last Tagged Interaction At');
+    }
+    const date = parseDateValue(dateVal);
+    return isInRange(date, period);
+  }).length;
 }
 
 function countClientsHoused(datasets, period) {
@@ -812,6 +912,14 @@ function valueForMetric(metricKey, datasets, period) {
       return countSspActiveClients(datasets, period);
     case 'benefits':
       return countBenefits(datasets, period);
+    case 'viSpdat':
+      return countViSpdat(datasets, period);
+    case 'lifelinePhone':
+      return countLifelinePhone(datasets, period);
+    case 'idFeeWaiver':
+      return countIdFeeWaiver(datasets, period);
+    case 'employmentSupport':
+      return countEmploymentSupport(datasets, period);
     default:
       return 0;
   }
