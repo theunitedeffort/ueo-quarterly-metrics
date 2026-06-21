@@ -169,9 +169,20 @@ h3 {
   align-items: start;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
 }
 
-.example-name,
+.file-card-header > div {
+  min-width: 0;
+}
+
+.example-name {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  word-break: break-all;
+}
+
 .file-status {
   margin-bottom: 0;
   color: var(--muted);
