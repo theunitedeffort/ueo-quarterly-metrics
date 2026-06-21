@@ -27,7 +27,8 @@ const METRIC_NAMES = {
   viSpdat: 'VI-SPDAT',
   lifelinePhone: 'Lifeline phone giveaway',
   idFeeWaiver: 'ID fee waiver',
-  employmentSupport: 'Employment support provided'
+  employmentSupport: 'Employment support provided',
+  employedClients: 'Clients who got hired'
 };
 
 const HOUSING_SUPPORT_PROGRAMS = [
@@ -83,7 +84,7 @@ export const FILE_SPECS = {
       'Client Status',
       'Client Engagement Letter'
     ],
-    optionalColumns: ['Record ID', 'First', 'Last'],
+    optionalColumns: ['Record ID', 'First', 'Last', 'VI-SPDAT Date', 'VI-SPDAT Score'],
     tooltip:
       'Needs one row per Apricot client. Creation Date should be a date/time like 01/31/2026 9:58 AM. Client Status should include values like Active or Semi Active. Client Engagement Letter should be Yes for signed clients.',
     metricUse:
@@ -206,6 +207,16 @@ export const FILE_SPECS = {
     tooltip:
       'Optional. One row per client enrollment. Enrollment Start Date or Last Tagged Interaction At is used as the date. Rows without a valid date are not counted.',
     metricUse: 'Employment support provided.'
+  },
+  employedClients: {
+    id: 'employedClients',
+    label: 'Employed Clients (optional)',
+    exampleName: 'Employed_Clients___2026.csv',
+    requiredColumns: ['Name', 'Date Employed'],
+    optionalColumns: [],
+    tooltip:
+      'Optional. One row per employed client. Date Employed is used as the date. Rows without a valid date are not counted.',
+    metricUse: 'Clients who got hired.'
   }
 };
 
@@ -638,10 +649,9 @@ function countHousingSupport(datasets, period) {
 
 function countViSpdat(datasets, period) {
   return countRows(
-    datasets.programs,
-    'Start Date',
-    period,
-    (row) => programMatches(row, ['VI-SPDAT'])
+    datasets.clients,
+    'VI-SPDAT Date',
+    period
   );
 }
 
@@ -693,6 +703,27 @@ function countEmploymentSupport(datasets, period) {
       dateVal = getValue(row, 'Last Tagged Interaction At');
     }
     const date = parseDateValue(dateVal);
+    return isInRange(date, period);
+  }).length;
+}
+
+function extractDateStr(val) {
+  if (!val) return null;
+  const valStr = String(val).trim();
+  if (valStr.toLowerCase() === 'pending' || valStr.toLowerCase() === 'date employed') {
+    return null;
+  }
+  const match = valStr.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/);
+  return match ? match[0] : null;
+}
+
+function countEmployedClients(datasets, period) {
+  const rows = cleanRows(datasets.employedClients);
+  return rows.filter((row) => {
+    const dateVal = getValue(row, 'Date Employed');
+    const extracted = extractDateStr(dateVal);
+    if (!extracted) return false;
+    const date = parseDateValue(extracted);
     return isInRange(date, period);
   }).length;
 }
@@ -920,6 +951,8 @@ function valueForMetric(metricKey, datasets, period) {
       return countIdFeeWaiver(datasets, period);
     case 'employmentSupport':
       return countEmploymentSupport(datasets, period);
+    case 'employedClients':
+      return countEmployedClients(datasets, period);
     default:
       return 0;
   }

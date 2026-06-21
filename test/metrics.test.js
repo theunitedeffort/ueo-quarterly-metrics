@@ -159,7 +159,8 @@ test('buildMetricsTable calculates the uploaded-file quarterly metrics', () => {
     ['VI-SPDAT', 0, 0, 0, 0],
     ['Lifeline phone giveaway', 0, 0, 0, 0],
     ['ID fee waiver', 0, 0, 0, 0],
-    ['Employment support provided', 0, 0, 0, 0]
+    ['Employment support provided', 0, 0, 0, 0],
+    ['Clients who got hired', 0, 0, 0, 0]
   ]);
 });
 
@@ -259,6 +260,9 @@ test('tableToClipboardText creates spreadsheet-friendly TSV', () => {
 
 test('housing applications, ID fee waivers, and lifeline phone lists are counted correctly', () => {
   const datasets = {
+    clients: [
+      { 'VI-SPDAT Date': '02/10/2026' }
+    ],
     programs: [
       { 'Start Date': '01/05/2026', 'Program Enrolled': 'PSH' },
       { 'Start Date': '02/10/2026', 'Program Enrolled': 'Housing Solutions - VI-SPDAT' }
@@ -317,5 +321,22 @@ test('employment support report counts enrollments correctly based on fallback d
   const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
   const row = table.rows.find(([name]) => name === 'Employment support provided');
   assert.deepEqual(row, ['Employment support provided', 2, 1, 1, 0]);
+});
+
+test('employed clients report counts hires correctly based on Date Employed with regex fallback', () => {
+  const datasets = {
+    employedClients: [
+      { Name: 'A', 'Date Employed': '2/3/26' },
+      { Name: 'B', 'Date Employed': '3/1/2026' },
+      { Name: 'C', 'Date Employed': '1. 3/4/26\n2. ~14 years' },
+      { Name: 'D', 'Date Employed': 'Pending' },
+      { Name: 'E', 'Date Employed': 'Date Employed' },
+      { Name: 'F', 'Date Employed': '4/27/26' }
+    ]
+  };
+
+  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
+  const row = table.rows.find(([name]) => name === 'Clients who got hired');
+  assert.deepEqual(row, ['Clients who got hired', 3, 0, 1, 2]);
 });
 
