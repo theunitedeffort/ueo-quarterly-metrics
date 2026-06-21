@@ -170,7 +170,7 @@ export const FILE_SPECS = {
   housingApplications: {
     id: 'housingApplications',
     label: 'Housing Applications (optional)',
-    exampleName: 'Housing_Applications_anonymized.csv',
+    exampleName: 'Housing_Applications.csv',
     requiredColumns: ['Date Submitted'],
     optionalColumns: ['Name', 'Status', 'Test Application'],
     tooltip:
@@ -180,7 +180,7 @@ export const FILE_SPECS = {
   idFeeWaiver: {
     id: 'idFeeWaiver',
     label: 'ID Fee Waiver (optional)',
-    exampleName: 'ID_Fee_Waiver_Tracking__Responses.csv',
+    exampleName: 'ID_Fee_Waiver_Tracking.csv',
     requiredColumns: ['Timestamp'],
     optionalColumns: [],
     tooltip:
@@ -200,7 +200,7 @@ export const FILE_SPECS = {
   employmentSupport: {
     id: 'employmentSupport',
     label: 'Employment Support Engagement Report (optional)',
-    exampleName: 'employment_support_engagement_report_anonymized.csv',
+    exampleName: 'employment_support_engagement_report.csv',
     requiredColumns: [],
     optionalColumns: ['Enrollment Start Date', 'Last Tagged Interaction At'],
     tooltip:
