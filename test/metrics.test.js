@@ -260,9 +260,6 @@ test('tableToClipboardText creates spreadsheet-friendly TSV', () => {
 
 test('housing applications, ID fee waivers, and lifeline phone lists are counted correctly', () => {
   const datasets = {
-    clients: [
-      { 'VI-SPDAT Date': '02/10/2026' }
-    ],
     programs: [
       { 'Start Date': '01/05/2026', 'Program Enrolled': 'PSH' },
       { 'Start Date': '02/10/2026', 'Program Enrolled': 'Housing Solutions - VI-SPDAT' }

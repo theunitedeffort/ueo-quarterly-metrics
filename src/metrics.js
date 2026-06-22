@@ -84,7 +84,7 @@ export const FILE_SPECS = {
       'Client Status',
       'Client Engagement Letter'
     ],
-    optionalColumns: ['Record ID', 'First', 'Last', 'VI-SPDAT Date', 'VI-SPDAT Score'],
+    optionalColumns: ['Record ID', 'First', 'Last'],
     tooltip:
       'Needs one row per Apricot client. Creation Date should be a date/time like 01/31/2026 9:58 AM. Client Status should include values like Active or Semi Active. Client Engagement Letter should be Yes for signed clients.',
     metricUse:
@@ -649,9 +649,10 @@ function countHousingSupport(datasets, period) {
 
 function countViSpdat(datasets, period) {
   return countRows(
-    datasets.clients,
-    'VI-SPDAT Date',
-    period
+    datasets.programs,
+    'Start Date',
+    period,
+    (row) => programMatches(row, ['VI-SPDAT'])
   );
 }
 
