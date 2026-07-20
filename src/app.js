@@ -2,10 +2,47 @@ import {
   FILE_SPEC_LIST,
   buildMetricsTable,
   formatTableValue,
+  matrixToRecords,
   parseCsv,
   tableToClipboardText,
   validateDataset
 } from './metrics.js';
+
+const SHEETJS_URL = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs';
+let sheetJsPromise = null;
+
+function loadSheetJs() {
+  sheetJsPromise ??= import(SHEETJS_URL);
+  return sheetJsPromise;
+}
+
+async function parseXlsxFile(file, fileSpec) {
+  const XLSX = await loadSheetJs();
+  const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  const sheetNames = workbook.SheetNames ?? [];
+  if (sheetNames.length === 0) {
+    throw new Error('The workbook has no sheets.');
+  }
+
+  const sheetMatrix = (name) =>
+    XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, raw: true, defval: '' });
+
+  const monthly = sheetNames.find((name) => name.trim().toLowerCase() === 'monthly');
+  if (monthly) {
+    return matrixToRecords(sheetMatrix(monthly));
+  }
+
+  const required = (fileSpec.requiredColumns ?? []).map((column) => column.trim().toLowerCase());
+  for (const name of sheetNames) {
+    const records = matrixToRecords(sheetMatrix(name));
+    const headers = new Set(Object.keys(records[0] ?? {}).map((key) => key.trim().toLowerCase()));
+    if (records.length > 0 && required.every((column) => headers.has(column))) {
+      return records;
+    }
+  }
+
+  return matrixToRecords(sheetMatrix(sheetNames[0]));
+}
 
 const state = {
   datasets: {},
@@ -73,6 +110,7 @@ function createFileCard(fileSpec) {
   tooltip.id = tooltipId;
   tooltipButton.setAttribute('aria-describedby', tooltipId);
   tooltip.textContent = buildTooltipText(fileSpec);
+  input.accept = fileSpec.accept ?? '.csv,text/csv';
   input.dataset.fileSpec = fileSpec.id;
   input.addEventListener('change', () => handleFileChange(fileSpec, input.files?.[0]));
 
@@ -90,8 +128,9 @@ async function handleFileChange(fileSpec, file) {
   }
 
   try {
-    const text = await file.text();
-    const rows = parseCsv(text);
+    const rows = /\.xlsx$/i.test(file.name)
+      ? await parseXlsxFile(file, fileSpec)
+      : parseCsv(await file.text());
     const validation = validateDataset(fileSpec, rows);
     state.datasets[fileSpec.id] = rows;
     state.files[fileSpec.id] = file.name;

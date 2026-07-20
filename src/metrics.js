@@ -100,6 +100,24 @@ export const FILE_SPECS = {
       'Needs one row per program enrollment. Start Date should be a date like 01/31/2026. Program Enrolled is matched against housing program names and benefit/service names.',
     metricUse: 'Housing support and benefits/services provided.'
   },
+  viSpdatReport: {
+    id: 'viSpdatReport',
+    label: 'VI-SPDAT Report (.xlsx)',
+    exampleName: 'VI-SPDAT 2026-01 to 2026-06 gnrl-405.xlsx',
+    accept: '.xlsx,.csv',
+    requiredColumns: ['Date'],
+    optionalColumns: [
+      'Client Full Name',
+      'Unique ID',
+      'Assessment Name',
+      'Assessment Score',
+      'Assessing Agency',
+      'Assessing Program'
+    ],
+    tooltip:
+      'Assessment-system export with one row per VI-SPDAT assessment on the Monthly sheet. Date is used for the period. When Assessment Name is present, only rows containing SPDAT are counted. When this file is loaded, VI-SPDAT is counted from it instead of Clients & Programs.',
+    metricUse: 'VI-SPDAT and Benefits & services applications submitted.'
+  },
   housed: {
     id: 'housed',
     label: 'Housed',
@@ -350,7 +368,15 @@ export function parseDateValue(value) {
   if (typeof value === 'number' && Number.isFinite(value)) {
     if (value > 20000 && value < 100000) {
       const excelEpoch = Date.UTC(1899, 11, 30);
-      return new Date(excelEpoch + value * 24 * 60 * 60 * 1000);
+      const utc = new Date(excelEpoch + Math.round(value * 24 * 60 * 60 * 1000));
+      return makeLocalDate(
+        utc.getUTCFullYear(),
+        utc.getUTCMonth(),
+        utc.getUTCDate(),
+        utc.getUTCHours(),
+        utc.getUTCMinutes(),
+        utc.getUTCSeconds()
+      );
     }
     return null;
   }
@@ -585,7 +611,13 @@ export function parseCsv(text) {
     rows.push(row);
   }
 
-  const nonEmptyRows = rows.filter((cells) => cells.some((cell) => String(cell).trim() !== ''));
+  return matrixToRecords(rows);
+}
+
+export function matrixToRecords(matrix) {
+  const nonEmptyRows = (matrix ?? []).filter(
+    (cells) => (cells ?? []).some((cell) => String(cell ?? '').trim() !== '')
+  );
   if (nonEmptyRows.length === 0) {
     return [];
   }
@@ -648,6 +680,17 @@ function countHousingSupport(datasets, period) {
 }
 
 function countViSpdat(datasets, period) {
+  const reportRows = cleanRows(datasets.viSpdatReport);
+  if (reportRows.length > 0) {
+    return reportRows.filter((row) => {
+      if (!rowDateInRange(row, 'Date', period)) {
+        return false;
+      }
+      const assessmentName = String(getValue(row, 'Assessment Name') ?? '').trim();
+      return assessmentName === '' || assessmentName.toLowerCase().includes('spdat');
+    }).length;
+  }
+
   return countRows(
     datasets.programs,
     'Start Date',

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   FILE_SPECS,
   buildMetricsTable,
+  matrixToRecords,
   parseCsv,
   tableToClipboardText,
   validateDataset
@@ -295,6 +296,64 @@ test('housing applications, ID fee waivers, and lifeline phone lists are counted
 
   const benefitsRow = table.rows.find(([name]) => name === 'Benefits & services applications submitted');
   assert.deepEqual(benefitsRow, ['Benefits & services applications submitted', 16, 6, 10, 0]);
+});
+
+test('VI-SPDAT report upload overrides the Clients & Programs count', () => {
+  const excelSerial = (year, month, day) =>
+    (Date.UTC(year, month - 1, day) - Date.UTC(1899, 11, 30)) / (24 * 60 * 60 * 1000);
+
+  const datasets = {
+    programs: [
+      { 'Start Date': '01/05/2026', 'Program Enrolled': 'VI-SPDAT (Vulnerability Index)' }
+    ],
+    viSpdatReport: [
+      {
+        Date: excelSerial(2026, 1, 3),
+        'Assessment Name': 'VI-SPDAT Prescreen for Single Adults [V2] with SCC local questions'
+      },
+      {
+        Date: excelSerial(2026, 2, 14),
+        'Assessment Name': 'VI-F-SPDAT Prescreen for Families [V2] with SCC local questions'
+      },
+      { Date: '2026-02-20 00:00:00', 'Assessment Name': '' },
+      { Date: excelSerial(2026, 3, 31), 'Assessment Name': 'Housing Intake' },
+      { Date: '', 'Assessment Name': 'VI-SPDAT Prescreen' },
+      { Date: excelSerial(2026, 4, 2), 'Assessment Name': 'VI-Y-SPDAT Prescreen for Transition Age Youth' }
+    ]
+  };
+
+  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
+  const viSpdatRow = table.rows.find(([name]) => name === 'VI-SPDAT');
+  assert.deepEqual(viSpdatRow, ['VI-SPDAT', 3, 1, 2, 0]);
+
+  const benefitsRow = table.rows.find(
+    ([name]) => name === 'Benefits & services applications submitted'
+  );
+  assert.deepEqual(benefitsRow, ['Benefits & services applications submitted', 3, 1, 2, 0]);
+});
+
+test('VI-SPDAT falls back to Clients & Programs without a report upload', () => {
+  const datasets = {
+    programs: [
+      { 'Start Date': '01/05/2026', 'Program Enrolled': 'VI-SPDAT (Vulnerability Index)' }
+    ]
+  };
+
+  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
+  const viSpdatRow = table.rows.find(([name]) => name === 'VI-SPDAT');
+  assert.deepEqual(viSpdatRow, ['VI-SPDAT', 1, 1, 0, 0]);
+});
+
+test('matrixToRecords builds records from workbook rows and skips blank rows', () => {
+  const records = matrixToRecords([
+    ['Date', 'Assessment\nName', ''],
+    ['', '', ''],
+    [46025, 'VI-SPDAT Prescreen', 'extra']
+  ]);
+
+  assert.deepEqual(records, [
+    { Date: 46025, 'Assessment Name': 'VI-SPDAT Prescreen', Column_2: 'extra' }
+  ]);
 });
 
 test('parseCsv maps empty headers to Category/Column keys', () => {
