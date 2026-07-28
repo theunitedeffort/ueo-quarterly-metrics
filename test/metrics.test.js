@@ -292,10 +292,10 @@ test('housing applications, ID fee waivers, and lifeline phone lists are counted
   assert.deepEqual(idWaiverRow, ['ID fee waiver', 2, 1, 1, 0]);
 
   const lifelineRow = table.rows.find(([name]) => name === 'Lifeline phone giveaway');
-  assert.deepEqual(lifelineRow, ['Lifeline phone giveaway', 13, 5, 8, 0]);
+  assert.deepEqual(lifelineRow, ['Lifeline phone giveaway', 30, 10, 20, 0]);
 
   const benefitsRow = table.rows.find(([name]) => name === 'Benefits & services applications submitted');
-  assert.deepEqual(benefitsRow, ['Benefits & services applications submitted', 16, 6, 10, 0]);
+  assert.deepEqual(benefitsRow, ['Benefits & services applications submitted', 33, 11, 22, 0]);
 });
 
 test('VI-SPDAT report upload overrides the Clients & Programs count', () => {
@@ -395,4 +395,3 @@ test('employed clients report counts hires correctly based on Date Employed with
   const row = table.rows.find(([name]) => name === 'Clients who got hired');
   assert.deepEqual(row, ['Clients who got hired', 3, 0, 1, 2]);
 });
-

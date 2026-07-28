@@ -213,7 +213,7 @@ export const FILE_SPECS = {
     requiredColumns: [],
     optionalColumns: [],
     tooltip:
-      'Optional. Contains monthly totals. Row with category "Monthly Total Completed" is summed for the period and added to Benefits & services applications submitted.',
+      'Optional. Contains monthly totals. Row with category "Monthly Total Applications" is summed for the period and added to Benefits & services applications submitted.',
     metricUse: 'Added to Benefits & services applications submitted and broken down.'
   },
   employmentSupport: {
@@ -707,7 +707,7 @@ function countLifelinePhone(datasets, period) {
   const rows = cleanRows(datasets.lifelinePhone);
   let total = 0;
   const targetRow = rows.find(
-    (row) => String(getValue(row, 'Category') ?? '').trim() === 'Monthly Total Completed'
+    (row) => String(getValue(row, 'Category') ?? '').trim() === 'Monthly Total Applications'
   );
   if (!targetRow) {
     return 0;
