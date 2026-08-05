@@ -6,6 +6,7 @@ import {
   buildMetricsTable,
   matrixToRecords,
   parseCsv,
+  tableToClipboardHtml,
   tableToClipboardText,
   validateDataset
 } from '../src/metrics.js';
@@ -257,6 +258,23 @@ test('tableToClipboardText creates spreadsheet-friendly TSV', () => {
     text,
     'Type of Metric\tQ1 2026\nHousing support\t4\nOnsite Volunteer hours\t5.50'
   );
+});
+
+test('tableToClipboardHtml creates an email-safe table with inline formatting', () => {
+  const html = tableToClipboardHtml({
+    headers: ['Type of Metric', 'Q1 <2026>'],
+    rows: [
+      ['Housing & support', 4],
+      ['Onsite Volunteer hours', 5.5]
+    ]
+  });
+
+  assert.match(html, /^<table style="[^"]*border-collapse: collapse;/);
+  assert.match(html, /<th style="[^"]*background-color: #eef1f6;[^"]*">Q1 &lt;2026&gt;<\/th>/);
+  assert.match(html, /<td style="[^"]*text-align: left;[^"]*">Housing &amp; support<\/td>/);
+  assert.match(html, /<td style="[^"]*text-align: right;[^"]*">5\.50<\/td>/);
+  assert.match(html, /<tr style="background-color: #fafbfe;">/);
+  assert.doesNotMatch(html, /<style>/);
 });
 
 test('housing applications, ID fee waivers, and lifeline phone lists are counted correctly', () => {

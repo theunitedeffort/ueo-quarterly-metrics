@@ -1030,6 +1030,15 @@ function formatClipboardValue(metricName, value) {
   return String(Math.trunc(value));
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
 export function tableToClipboardText(table) {
   const lines = [table.headers.join('\t')];
   for (const row of table.rows) {
@@ -1039,6 +1048,36 @@ export function tableToClipboardText(table) {
     );
   }
   return lines.join('\n');
+}
+
+export function tableToClipboardHtml(table) {
+  const tableStyle = 'border-collapse: collapse; width: 100%; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1b2436;';
+  const headerStyle = 'background-color: #eef1f6; color: #1b2436; font-weight: 700; padding: 10px 12px; border: 1px solid #cfd5df; text-align: left; vertical-align: middle;';
+  const cellStyle = 'padding: 9px 12px; border: 1px solid #cfd5df; vertical-align: middle;';
+
+  const headers = table.headers
+    .map((header, index) => {
+      const alignment = index === 0 ? '' : ' text-align: right;';
+      return `<th style="${headerStyle}${alignment}">${escapeHtml(header)}</th>`;
+    })
+    .join('');
+
+  const rows = table.rows
+    .map((row, rowIndex) => {
+      const metricName = row[0];
+      const background = rowIndex % 2 === 0 ? '#ffffff' : '#fafbfe';
+      const cells = row
+        .map((value, index) => {
+          const formatted = index === 0 ? value : formatClipboardValue(metricName, value);
+          const alignment = index === 0 ? 'left' : 'right';
+          return `<td style="${cellStyle} text-align: ${alignment};">${escapeHtml(formatted)}</td>`;
+        })
+        .join('');
+      return `<tr style="background-color: ${background};">${cells}</tr>`;
+    })
+    .join('');
+
+  return `<table style="${tableStyle}"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 export function formatTableValue(metricName, value) {

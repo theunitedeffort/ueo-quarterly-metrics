@@ -4,6 +4,7 @@ import {
   formatTableValue,
   matrixToRecords,
   parseCsv,
+  tableToClipboardHtml,
   tableToClipboardText,
   validateDataset
 } from './metrics.js';
@@ -259,18 +260,31 @@ async function copyTable() {
   }
 
   const text = tableToClipboardText(state.table);
+  const html = tableToClipboardHtml(state.table);
   try {
-    await navigator.clipboard.writeText(text);
+    if (!navigator.clipboard?.write || !window.ClipboardItem) {
+      throw new Error('Rich clipboard is not supported.');
+    }
+    const clipboardItem = new ClipboardItem({
+      'text/html': new Blob([html], { type: 'text/html' }),
+      'text/plain': new Blob([text], { type: 'text/plain' })
+    });
+    await navigator.clipboard.write([clipboardItem]);
   } catch {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.setAttribute('readonly', '');
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    document.body.appendChild(container);
+
+    const range = document.createRange();
+    range.selectNode(container);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
     document.execCommand('copy');
-    textarea.remove();
+    selection.removeAllRanges();
+    container.remove();
   }
 
   elements.copyButton.textContent = 'Copied';
