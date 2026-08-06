@@ -294,7 +294,11 @@ async function copyTable() {
 }
 
 FILE_SPEC_LIST.forEach(createFileCard);
-elements.yearInput.addEventListener('input', render);
+let yearRenderTimer = null;
+elements.yearInput.addEventListener('input', () => {
+  window.clearTimeout(yearRenderTimer);
+  yearRenderTimer = window.setTimeout(render, 150);
+});
 elements.startMonthSelect.addEventListener('change', render);
 elements.endMonthSelect.addEventListener('change', render);
 elements.copyButton.addEventListener('click', copyTable);

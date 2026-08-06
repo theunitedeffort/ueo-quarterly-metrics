@@ -468,13 +468,27 @@ function isInRange(date, period) {
   return date !== null && date >= period.start && date <= period.end;
 }
 
+const rowDateCache = new WeakMap();
+
+function getRowDate(row, columns) {
+  let cache = rowDateCache.get(row);
+  if (!cache) {
+    cache = new Map();
+    rowDateCache.set(row, cache);
+  }
+  const key = Array.isArray(columns) ? columns.join('\u0001') : columns;
+  if (!cache.has(key)) {
+    cache.set(key, parseDateValue(getValue(row, columns)));
+  }
+  return cache.get(key);
+}
+
 function rowDateInRange(row, columns, period) {
-  const date = parseDateValue(getValue(row, columns));
-  return isInRange(date, period);
+  return isInRange(getRowDate(row, columns), period);
 }
 
 function rowDateByEnd(row, columns, period) {
-  const date = parseDateValue(getValue(row, columns));
+  const date = getRowDate(row, columns);
   return date !== null && date <= period.end;
 }
 
@@ -650,8 +664,18 @@ export function validateDataset(fileSpec, rows) {
   };
 }
 
+const cleanedRowsCache = new WeakMap();
+
 function cleanRows(rows, testColumns = ['Test Data', 'Test Client', 'Test Application']) {
-  return (rows ?? []).filter((row) => !testColumns.some((column) => isMarked(getValue(row, column))));
+  if (!rows || rows.length === 0) {
+    return [];
+  }
+  let cleaned = cleanedRowsCache.get(rows);
+  if (!cleaned) {
+    cleaned = rows.filter((row) => !testColumns.some((column) => isMarked(getValue(row, column))));
+    cleanedRowsCache.set(rows, cleaned);
+  }
+  return cleaned;
 }
 
 function countRows(rows, dateColumns, period, predicate = () => true) {
@@ -660,9 +684,25 @@ function countRows(rows, dateColumns, period, predicate = () => true) {
   ).length;
 }
 
-function programMatches(row, programs) {
-  const value = String(getValue(row, 'Program Enrolled') ?? '').toLowerCase();
-  return programs.some((program) => value.includes(program.toLowerCase()));
+const HOUSING_SUPPORT_PROGRAMS_LOWER = HOUSING_SUPPORT_PROGRAMS.map((program) => program.toLowerCase());
+const BENEFIT_EXCLUDED_PROGRAMS_LOWER = HOUSING_PROGRAMS_TO_EXCLUDE_FROM_BENEFITS.map(
+  (program) => program.toLowerCase()
+);
+
+const programFlagsCache = new WeakMap();
+
+function getProgramFlags(row) {
+  let flags = programFlagsCache.get(row);
+  if (!flags) {
+    const value = String(getValue(row, 'Program Enrolled') ?? '').toLowerCase();
+    flags = {
+      housing: HOUSING_SUPPORT_PROGRAMS_LOWER.some((program) => value.includes(program)),
+      excludedFromBenefits: BENEFIT_EXCLUDED_PROGRAMS_LOWER.some((program) => value.includes(program)),
+      viSpdat: value.includes('vi-spdat')
+    };
+    programFlagsCache.set(row, flags);
+  }
+  return flags;
 }
 
 function countHousingApplications(datasets, period) {
@@ -674,7 +714,7 @@ function countHousingSupport(datasets, period) {
     datasets.programs,
     'Start Date',
     period,
-    (row) => programMatches(row, HOUSING_SUPPORT_PROGRAMS)
+    (row) => getProgramFlags(row).housing
   );
   return enrollments + countHousingApplications(datasets, period);
 }
@@ -695,7 +735,7 @@ function countViSpdat(datasets, period) {
     datasets.programs,
     'Start Date',
     period,
-    (row) => programMatches(row, ['VI-SPDAT'])
+    (row) => getProgramFlags(row).viSpdat
   );
 }
 
@@ -724,30 +764,44 @@ function countLifelinePhone(datasets, period) {
   return total;
 }
 
+// Counts that feed both a standalone metric and the benefits total are
+// memoized per period object so each report build computes them only once.
+function memoizePeriodCount(fn) {
+  const cache = new WeakMap();
+  return (datasets, period) => {
+    if (!cache.has(period)) {
+      cache.set(period, fn(datasets, period));
+    }
+    return cache.get(period);
+  };
+}
+
+const countViSpdatForPeriod = memoizePeriodCount(countViSpdat);
+const countIdFeeWaiverForPeriod = memoizePeriodCount(countIdFeeWaiver);
+const countLifelinePhoneForPeriod = memoizePeriodCount(countLifelinePhone);
+
 function countBenefits(datasets, period) {
   const programBenefits = countRows(
     datasets.programs,
     'Start Date',
     period,
-    (row) => !programMatches(row, HOUSING_PROGRAMS_TO_EXCLUDE_FROM_BENEFITS)
+    (row) => !getProgramFlags(row).excludedFromBenefits
   );
   return (
     programBenefits +
-    countViSpdat(datasets, period) +
-    countIdFeeWaiver(datasets, period) +
-    countLifelinePhone(datasets, period)
+    countViSpdatForPeriod(datasets, period) +
+    countIdFeeWaiverForPeriod(datasets, period) +
+    countLifelinePhoneForPeriod(datasets, period)
   );
 }
 
 function countEmploymentSupport(datasets, period) {
   const rows = cleanRows(datasets.employmentSupport);
   return rows.filter((row) => {
-    let dateVal = getValue(row, 'Enrollment Start Date');
-    if (isBlank(dateVal)) {
-      dateVal = getValue(row, 'Last Tagged Interaction At');
-    }
-    const date = parseDateValue(dateVal);
-    return isInRange(date, period);
+    const column = isBlank(getValue(row, 'Enrollment Start Date'))
+      ? 'Last Tagged Interaction At'
+      : 'Enrollment Start Date';
+    return isInRange(getRowDate(row, column), period);
   }).length;
 }
 
@@ -832,8 +886,8 @@ function getVolunteerHours(row) {
     return shiftHours;
   }
 
-  const arrival = parseDateValue(getValue(row, 'Intended Arrival Time'));
-  const departure = parseDateValue(getValue(row, 'Intended Departure Time'));
+  const arrival = getRowDate(row, 'Intended Arrival Time');
+  const departure = getRowDate(row, 'Intended Departure Time');
   if (!arrival || !departure) {
     return 0;
   }
@@ -895,7 +949,7 @@ function countSspFromIndividualRecords(datasets, period) {
 
 function getFirstDate(row, columns) {
   for (const column of columns) {
-    const date = parseDateValue(getValue(row, column));
+    const date = getRowDate(row, column);
     if (date) {
       return date;
     }
@@ -920,7 +974,7 @@ function countSspFromClientSummary(rows, period) {
       'Latest General Interaction Time',
       'Assessment Time'
     ]
-      .map((column) => parseDateValue(getValue(row, column)))
+      .map((column) => getRowDate(row, column))
       .filter(Boolean);
 
     return activityDates.some((date) => isInRange(date, period));
@@ -988,11 +1042,11 @@ function valueForMetric(metricKey, datasets, period) {
     case 'benefits':
       return countBenefits(datasets, period);
     case 'viSpdat':
-      return countViSpdat(datasets, period);
+      return countViSpdatForPeriod(datasets, period);
     case 'lifelinePhone':
-      return countLifelinePhone(datasets, period);
+      return countLifelinePhoneForPeriod(datasets, period);
     case 'idFeeWaiver':
-      return countIdFeeWaiver(datasets, period);
+      return countIdFeeWaiverForPeriod(datasets, period);
     case 'employmentSupport':
       return countEmploymentSupport(datasets, period);
     case 'employedClients':
