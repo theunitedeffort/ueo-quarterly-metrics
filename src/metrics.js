@@ -186,16 +186,6 @@ export const FILE_SPECS = {
       'This file is an alternative to individual assessment and interaction rows. The file has one row for each client. Latest SSP Activity Time determines activity for the report period.',
     metricUse: 'Clients active in Self-Sufficiency Program.'
   },
-  housingApplications: {
-    id: 'housingApplications',
-    label: 'Housing Applications (optional)',
-    exampleName: 'Housing_Applications.csv',
-    requiredColumns: ['Date Submitted'],
-    optionalColumns: ['Name', 'Status', 'Test Application'],
-    tooltip:
-      'The file is optional. It has one row for each housing or waitlist application that staff submit for a client. Date Submitted contains a date and time. The app adds rows from the report period to Housing support.',
-    metricUse: 'Housing support.'
-  },
   idFeeWaiver: {
     id: 'idFeeWaiver',
     label: 'ID Fee Waiver (optional)',
@@ -705,18 +695,13 @@ function getProgramFlags(row) {
   return flags;
 }
 
-function countHousingApplications(datasets, period) {
-  return countRows(datasets.housingApplications, 'Date Submitted', period);
-}
-
 function countHousingSupport(datasets, period) {
-  const enrollments = countRows(
+  return countRows(
     datasets.programs,
     'Start Date',
     period,
     (row) => getProgramFlags(row).housing
   );
-  return enrollments + countHousingApplications(datasets, period);
 }
 
 function countViSpdat(datasets, period) {

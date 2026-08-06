@@ -277,16 +277,11 @@ test('tableToClipboardHtml creates an email-safe table with inline formatting', 
   assert.doesNotMatch(html, /<style>/);
 });
 
-test('housing applications, ID fee waivers, and lifeline phone lists are counted correctly', () => {
+test('ID fee waivers and lifeline phone lists are counted correctly', () => {
   const datasets = {
     programs: [
       { 'Start Date': '01/05/2026', 'Program Enrolled': 'PSH' },
       { 'Start Date': '02/10/2026', 'Program Enrolled': 'Housing Solutions - VI-SPDAT' }
-    ],
-    housingApplications: [
-      { 'Date Submitted': '01/15/2026', 'Test Application': '' },
-      { 'Date Submitted': '02/20/2026', 'Test Application': 'Yes' },
-      { 'Date Submitted': '02/25/2026', 'Test Application': 'no' }
     ],
     idFeeWaiver: [
       { 'Timestamp': '01/04/2026 9:09:45', 'Client\'s First Name': 'A' },
@@ -301,7 +296,7 @@ test('housing applications, ID fee waivers, and lifeline phone lists are counted
   const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
 
   const housingSupportRow = table.rows.find(([name]) => name === 'Housing support');
-  assert.deepEqual(housingSupportRow, ['Housing support', 4, 2, 2, 0]);
+  assert.deepEqual(housingSupportRow, ['Housing support', 2, 1, 1, 0]);
 
   const viSpdatRow = table.rows.find(([name]) => name === 'VI-SPDAT');
   assert.deepEqual(viSpdatRow, ['VI-SPDAT', 1, 0, 1, 0]);
