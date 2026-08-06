@@ -103,7 +103,7 @@ export const FILE_SPECS = {
   viSpdatReport: {
     id: 'viSpdatReport',
     label: 'VI-SPDAT Report (.xlsx)',
-    exampleName: 'VI-SPDAT 2026-01 to 2026-06 gnrl-405.xlsx',
+    exampleName: 'VI-SPDAT Report.xlsx',
     accept: '.xlsx,.csv',
     requiredColumns: ['Date'],
     optionalColumns: [
