@@ -123,7 +123,7 @@ async function handleFileChange(fileSpec, file) {
     delete state.datasets[fileSpec.id];
     delete state.files[fileSpec.id];
     delete state.validations[fileSpec.id];
-    updateFileStatus(fileSpec.id, 'Waiting for upload.', 'idle');
+    updateFileStatus(fileSpec.id, 'Select a file.', 'idle');
     render();
     return;
   }
@@ -139,8 +139,8 @@ async function handleFileChange(fileSpec, file) {
     updateFileStatus(
       fileSpec.id,
       validation.ok
-        ? `${rows.length.toLocaleString()} rows loaded from ${file.name}.`
-        : `${rows.length.toLocaleString()} rows loaded, column check needs attention.`,
+        ? `The app loaded ${rows.length.toLocaleString()} rows from ${file.name}.`
+        : `The app loaded ${rows.length.toLocaleString()} rows. The file does not have all required columns.`,
       validation.ok ? 'ok' : 'warning'
     );
   } catch (error) {
@@ -153,7 +153,7 @@ async function handleFileChange(fileSpec, file) {
       rowCount: 0,
       error: error instanceof Error ? error.message : String(error)
     };
-    updateFileStatus(fileSpec.id, `Could not read ${file.name}.`, 'error');
+    updateFileStatus(fileSpec.id, `The app cannot read ${file.name}.`, 'error');
   }
 
   render();
@@ -219,15 +219,15 @@ function renderWarnings() {
       messages.push(validation.error);
     }
     if (validation.missingRequired?.length) {
-      messages.push(`Missing: ${validation.missingRequired.join(', ')}`);
+      messages.push(`Missing columns: ${validation.missingRequired.join(', ')}`);
     }
     if (validation.missingColumnGroups?.length) {
       messages.push(
-        ...validation.missingColumnGroups.map((group) => `Needs one of: ${group.join(' / ')}`)
+        ...validation.missingColumnGroups.map((group) => `Required column: one of ${group.join(' / ')}`)
       );
     }
     if (messages.length === 0) {
-      messages.push('The file could not be validated.');
+      messages.push('The app cannot validate this file.');
     }
 
     const item = document.createElement('li');
@@ -240,11 +240,11 @@ function renderWarnings() {
 
 function renderSummary() {
   const loadedCount = Object.keys(state.datasets).length;
-  const loadedLabel = `${loadedCount} of ${FILE_SPEC_LIST.length} files loaded`;
-  elements.loadedSummary.textContent = loadedCount === 0 ? 'No files loaded yet.' : `${loadedLabel}.`;
+  const loadedLabel = `The app loaded ${loadedCount} of ${FILE_SPEC_LIST.length} files`;
+  elements.loadedSummary.textContent = loadedCount === 0 ? 'No files loaded.' : `${loadedLabel}.`;
   elements.tableStatus.textContent = loadedCount === 0
-    ? 'Upload CSV files to populate the metrics.'
-    : `Showing ${state.table.headers.slice(1).join(', ')}.`;
+    ? 'Upload the files to calculate the metrics.'
+    : `The table shows ${state.table.headers.slice(1).join(', ')}.`;
 }
 
 function render() {

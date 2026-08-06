@@ -86,9 +86,9 @@ export const FILE_SPECS = {
     ],
     optionalColumns: ['Record ID', 'First', 'Last'],
     tooltip:
-      'Needs one row per Apricot client. Creation Date should be a date/time like 01/31/2026 9:58 AM. Client Status should include values like Active or Semi Active. Client Engagement Letter should be Yes for signed clients.',
+      'The file has one row for each Apricot client. Creation Date contains a date and time, such as 01/31/2026 9:58 AM. Client Status contains values such as Active or Semi Active. Client Engagement Letter contains Yes for each signed client.',
     metricUse:
-      'New clients, engagement letters, active clients, and semi-active clients.'
+      'New clients, signed engagement letters, active clients, and semi-active clients.'
   },
   programs: {
     id: 'programs',
@@ -97,12 +97,12 @@ export const FILE_SPECS = {
     requiredColumns: ['Program Enrolled', 'Start Date'],
     optionalColumns: ['Program Status', 'Client Manager', 'Record ID'],
     tooltip:
-      'Needs one row per program enrollment. Start Date should be a date like 01/31/2026. Program Enrolled is matched against housing program names and benefit/service names.',
-    metricUse: 'Housing support and benefits/services provided.'
+      'The file has one row for each program enrollment. Start Date contains a date, such as 01/31/2026. The app compares Program Enrolled with housing program names and benefit or service program names.',
+    metricUse: 'Housing support and benefits or services provided.'
   },
   viSpdatReport: {
     id: 'viSpdatReport',
-    label: 'VI-SPDAT Report (.xlsx)',
+    label: 'VI-SPDAT Report (.csv or .xlsx)',
     exampleName: 'VI-SPDAT Report.csv',
     accept: '.xlsx,.csv',
     requiredColumns: ['Date'],
@@ -115,7 +115,7 @@ export const FILE_SPECS = {
       'Assessing Program'
     ],
     tooltip:
-      'Assessment-system export with one row per VI-SPDAT assessment on the Monthly sheet. Date is used for the period. When Assessment Name is present, only rows containing SPDAT are counted. When this file is loaded, VI-SPDAT is counted from it instead of Clients & Programs.',
+      'The file has one row for each VI-SPDAT assessment. For XLSX files, the app reads the Monthly sheet. Date determines the report period. If Assessment Name exists, the app counts only rows that contain SPDAT. This file replaces the VI-SPDAT count from Clients & Programs.',
     metricUse: 'VI-SPDAT and Benefits & services applications submitted.'
   },
   housed: {
@@ -125,7 +125,7 @@ export const FILE_SPECS = {
     requiredColumns: ['Name', 'Date Housed'],
     optionalColumns: HOUSED_VALUE_COLUMNS,
     tooltip:
-      'Needs one row per housed client. Rows without Name are ignored. Date Housed is used for the period, and the housing columns are summed for clients housed.',
+      'The file has one row for each housed client. The app ignores rows without Name. Date Housed determines the report period. The app adds the housing column values for each housed client.',
     metricUse: 'Clients housed.'
   },
   volunteers: {
@@ -140,7 +140,7 @@ export const FILE_SPECS = {
       'Test Data'
     ],
     tooltip:
-      'Needs one row per volunteer attendance record. Event Date should be a date. Volunteer ID should be stable across months. Shift Hours is used when present; otherwise Intended Arrival Time and Intended Departure Time are used.',
+      'The file has one row for each volunteer attendance record. Event Date contains a date. Volunteer ID uses the same value for a volunteer in all months. If Shift Hours exists, the app uses it. Otherwise, the app uses Intended Arrival Time and Intended Departure Time.',
     metricUse: 'Active onsite volunteers and onsite volunteer hours.'
   },
   bridgeAssessments: {
@@ -154,7 +154,7 @@ export const FILE_SPECS = {
     ],
     optionalColumns: ['Full Name', 'Latest SSP Activity Time', 'Test Data', 'Test Client'],
     tooltip:
-      'Use either individual assessment rows with Assessment Time and Client Record ID, or a client summary export with This Record ID plus bridge assessment and latest SSP activity time columns. Test rows are ignored.',
+      'The file contains individual assessment rows or one summary row for each client. Individual rows contain Assessment Time and Client Record ID. Summary rows contain This Record ID and the assessment and activity time columns. The app ignores test rows.',
     metricUse: 'Clients active in Self-Sufficiency Program.'
   },
   generalInteractions: {
@@ -168,7 +168,7 @@ export const FILE_SPECS = {
     ],
     optionalColumns: ['Full Name', 'Test Data'],
     tooltip:
-      'Optional when Bridge Assessments is a client summary export. For individual interaction rows, include Interaction Time and Client Record ID or Client.',
+      'If Bridge Assessments contains one summary row for each client, this file is optional. Individual rows contain Interaction Time and Client Record ID or Client.',
     metricUse: 'Clients active in Self-Sufficiency Program.'
   },
   clientSummary: {
@@ -183,7 +183,7 @@ export const FILE_SPECS = {
     ],
     optionalColumns: ['Full Name', 'SSP Status', 'Test Client'],
     tooltip:
-      'Alternative SSP input when you have a client-level export instead of individual assessment and interaction records. Latest SSP Activity Time is preferred for activity by period.',
+      'This file is an alternative to individual assessment and interaction rows. The file has one row for each client. Latest SSP Activity Time determines activity for the report period.',
     metricUse: 'Clients active in Self-Sufficiency Program.'
   },
   housingApplications: {
@@ -193,8 +193,8 @@ export const FILE_SPECS = {
     requiredColumns: ['Date Submitted'],
     optionalColumns: ['Name', 'Status', 'Test Application'],
     tooltip:
-      'Optional. One row per housing/waitlist application submitted on behalf of a client. Date Submitted should be a date/time. Row count in the period is added to Housing support.',
-    metricUse: 'Added to Housing support.'
+      'The file is optional. It has one row for each housing or waitlist application that staff submit for a client. Date Submitted contains a date and time. The app adds rows from the report period to Housing support.',
+    metricUse: 'Housing support.'
   },
   idFeeWaiver: {
     id: 'idFeeWaiver',
@@ -203,8 +203,8 @@ export const FILE_SPECS = {
     requiredColumns: ['Timestamp'],
     optionalColumns: [],
     tooltip:
-      'Optional. One row per ID fee waiver. Timestamp should be a date/time. Row count in the period is added to Benefits & services applications submitted and broken down.',
-    metricUse: 'Added to Benefits & services applications submitted and broken down.'
+      'The file is optional. It has one row for each ID fee waiver. Timestamp contains a date and time. The app adds rows from the report period to Benefits & services applications submitted and the ID fee waiver total.',
+    metricUse: 'Benefits & services applications submitted and the ID fee waiver total.'
   },
   lifelinePhone: {
     id: 'lifelinePhone',
@@ -213,8 +213,8 @@ export const FILE_SPECS = {
     requiredColumns: [],
     optionalColumns: [],
     tooltip:
-      'Optional. Contains monthly totals. Row with category "Monthly Total Applications" is summed for the period and added to Benefits & services applications submitted.',
-    metricUse: 'Added to Benefits & services applications submitted and broken down.'
+      'The file is optional and contains monthly totals. The app adds the "Monthly Total Applications" value for the report period to Benefits & services applications submitted.',
+    metricUse: 'Benefits & services applications submitted and the Lifeline phone total.'
   },
   employmentSupport: {
     id: 'employmentSupport',
@@ -223,7 +223,7 @@ export const FILE_SPECS = {
     requiredColumns: [],
     optionalColumns: ['Enrollment Start Date', 'Last Tagged Interaction At'],
     tooltip:
-      'Optional. One row per client enrollment. Enrollment Start Date or Last Tagged Interaction At is used as the date. Rows without a valid date are not counted.',
+      'The file is optional and has one row for each client enrollment. Enrollment Start Date determines the date. If this value is empty, Last Tagged Interaction At determines the date. The app does not count rows without a valid date.',
     metricUse: 'Employment support provided.'
   },
   employedClients: {
@@ -233,7 +233,7 @@ export const FILE_SPECS = {
     requiredColumns: ['Name', 'Date Employed'],
     optionalColumns: [],
     tooltip:
-      'Optional. One row per employed client. Date Employed is used as the date. Rows without a valid date are not counted.',
+      'The file is optional and has one row for each employed client. Date Employed determines the date. The app does not count rows without a valid date.',
     metricUse: 'Clients who got hired.'
   }
 };
