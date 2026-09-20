@@ -28,6 +28,8 @@ const METRIC_NAMES = {
   lifelinePhone: 'Lifeline phone giveaway',
   idFeeWaiver: 'ID fee waiver',
   employmentSupport: 'Employment support provided',
+  techquity: 'TECHquity Fund',
+  seaFund: 'SEA Fund Application',
   employedClients: 'Clients who got hired'
 };
 
@@ -53,7 +55,12 @@ const HOUSING_SUPPORT_PROGRAMS = [
 const MANUALLY_ADDED_BENEFIT_PROGRAMS = [
   'UPLIFT',
   'MyConnectSV',
-  'LifeLine'
+  'LifeLine',
+  'Employment Support',
+  'TECHquity Fund',
+  'TECHquity',
+  'SEA Fund Application',
+  'SEA Fund'
 ];
 
 const HOUSING_PROGRAMS_TO_EXCLUDE_FROM_BENEFITS = [
@@ -214,7 +221,27 @@ export const FILE_SPECS = {
     optionalColumns: ['Enrollment Start Date', 'Last Tagged Interaction At'],
     tooltip:
       'The file is optional and has one row for each client enrollment. Enrollment Start Date determines the date. If this value is empty, Last Tagged Interaction At determines the date. The app does not count rows without a valid date.',
-    metricUse: 'Employment support provided.'
+    metricUse: 'Employment support provided and Benefits & services applications submitted.'
+  },
+  techquity: {
+    id: 'techquity',
+    label: 'TECHquity Intake (optional)',
+    exampleName: 'TECHquity_intake.csv',
+    requiredColumns: ['Timestamp'],
+    optionalColumns: [],
+    tooltip:
+      'The file is optional. It has one row for each TECHquity intake. Timestamp contains a date and time. The app adds rows from the report period to Benefits & services applications submitted and the TECHquity Fund total.',
+    metricUse: 'TECHquity Fund and Benefits & services applications submitted.'
+  },
+  seaFund: {
+    id: 'seaFund',
+    label: 'SEA Fund Intake (optional)',
+    exampleName: 'SEA_fund_intake.csv',
+    requiredColumns: ['Timestamp'],
+    optionalColumns: [],
+    tooltip:
+      'The file is optional. It has one row for each SEA Fund intake. Timestamp contains a date and time. The app adds rows from the report period to Benefits & services applications submitted and the SEA Fund Application total.',
+    metricUse: 'SEA Fund Application and Benefits & services applications submitted.'
   },
   employedClients: {
     id: 'employedClients',
@@ -749,8 +776,24 @@ function countLifelinePhone(datasets, period) {
   return total;
 }
 
-// Counts that feed both a standalone metric and the benefits total are
-// memoized per period object so each report build computes them only once.
+function countEmploymentSupport(datasets, period) {
+  const rows = cleanRows(datasets.employmentSupport);
+  return rows.filter((row) => {
+    const column = isBlank(getValue(row, 'Enrollment Start Date'))
+      ? 'Last Tagged Interaction At'
+      : 'Enrollment Start Date';
+    return isInRange(getRowDate(row, column), period);
+  }).length;
+}
+
+function countTechquity(datasets, period) {
+  return countRows(datasets.techquity, 'Timestamp', period);
+}
+
+function countSeaFund(datasets, period) {
+  return countRows(datasets.seaFund, 'Timestamp', period);
+}
+
 function memoizePeriodCount(fn) {
   const cache = new WeakMap();
   return (datasets, period) => {
@@ -764,6 +807,9 @@ function memoizePeriodCount(fn) {
 const countViSpdatForPeriod = memoizePeriodCount(countViSpdat);
 const countIdFeeWaiverForPeriod = memoizePeriodCount(countIdFeeWaiver);
 const countLifelinePhoneForPeriod = memoizePeriodCount(countLifelinePhone);
+const countEmploymentSupportForPeriod = memoizePeriodCount(countEmploymentSupport);
+const countTechquityForPeriod = memoizePeriodCount(countTechquity);
+const countSeaFundForPeriod = memoizePeriodCount(countSeaFund);
 
 function countBenefits(datasets, period) {
   const programBenefits = countRows(
@@ -776,18 +822,11 @@ function countBenefits(datasets, period) {
     programBenefits +
     countViSpdatForPeriod(datasets, period) +
     countIdFeeWaiverForPeriod(datasets, period) +
-    countLifelinePhoneForPeriod(datasets, period)
+    countLifelinePhoneForPeriod(datasets, period) +
+    countEmploymentSupportForPeriod(datasets, period) +
+    countTechquityForPeriod(datasets, period) +
+    countSeaFundForPeriod(datasets, period)
   );
-}
-
-function countEmploymentSupport(datasets, period) {
-  const rows = cleanRows(datasets.employmentSupport);
-  return rows.filter((row) => {
-    const column = isBlank(getValue(row, 'Enrollment Start Date'))
-      ? 'Last Tagged Interaction At'
-      : 'Enrollment Start Date';
-    return isInRange(getRowDate(row, column), period);
-  }).length;
 }
 
 function extractDateStr(val) {
@@ -1033,7 +1072,11 @@ function valueForMetric(metricKey, datasets, period) {
     case 'idFeeWaiver':
       return countIdFeeWaiverForPeriod(datasets, period);
     case 'employmentSupport':
-      return countEmploymentSupport(datasets, period);
+      return countEmploymentSupportForPeriod(datasets, period);
+    case 'techquity':
+      return countTechquityForPeriod(datasets, period);
+    case 'seaFund':
+      return countSeaFundForPeriod(datasets, period);
     case 'employedClients':
       return countEmployedClients(datasets, period);
     default:

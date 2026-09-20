@@ -162,6 +162,8 @@ test('buildMetricsTable calculates the uploaded-file quarterly metrics', () => {
     ['Lifeline phone giveaway', 0, 0, 0, 0],
     ['ID fee waiver', 0, 0, 0, 0],
     ['Employment support provided', 0, 0, 0, 0],
+    ['TECHquity Fund', 0, 0, 0, 0],
+    ['SEA Fund Application', 0, 0, 0, 0],
     ['Clients who got hired', 0, 0, 0, 0]
   ]);
 });
@@ -407,4 +409,57 @@ test('employed clients report counts hires correctly based on Date Employed with
   const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
   const row = table.rows.find(([name]) => name === 'Clients who got hired');
   assert.deepEqual(row, ['Clients who got hired', 3, 0, 1, 2]);
+});
+
+test('programs dataset excludes Employment Support, TECHquity Fund, and SEA Fund Application', () => {
+  const datasets = {
+    programs: [
+      { 'Start Date': '01/05/2026', 'Program Enrolled': 'Employment Support' },
+      { 'Start Date': '01/06/2026', 'Program Enrolled': 'TECHquity Fund' },
+      { 'Start Date': '01/07/2026', 'Program Enrolled': 'SEA Fund Application' },
+      { 'Start Date': '01/08/2026', 'Program Enrolled': 'CalFresh' }
+    ]
+  };
+
+  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
+  const row = table.rows.find(([name]) => name === 'Benefits & services applications submitted');
+  assert.deepEqual(row, ['Benefits & services applications submitted', 1, 1, 0, 0]);
+});
+
+test('TECHquity and SEA fund intakes are counted and added to benefits total', () => {
+  const datasets = {
+    employmentSupport: [
+      { 'Enrollment Start Date': '01/15/2026', 'Last Tagged Interaction At': '' }
+    ],
+    techquity: [
+      { Timestamp: '1/20/2026 10:00:00' },
+      { Timestamp: '2/15/2026 14:30:00' },
+      { Timestamp: '4/05/2026 09:00:00' }
+    ],
+    seaFund: [
+      { Timestamp: '1/22/2026 11:00:00' },
+      { Timestamp: '3/10/2026 16:00:00' }
+    ]
+  };
+
+  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
+
+  const techRow = table.rows.find(([name]) => name === 'TECHquity Fund');
+  assert.deepEqual(techRow, ['TECHquity Fund', 2, 1, 1, 0]);
+
+  const seaRow = table.rows.find(([name]) => name === 'SEA Fund Application');
+  assert.deepEqual(seaRow, ['SEA Fund Application', 2, 1, 0, 1]);
+
+  const empRow = table.rows.find(([name]) => name === 'Employment support provided');
+  assert.deepEqual(empRow, ['Employment support provided', 1, 1, 0, 0]);
+
+  const benefitsRow = table.rows.find(([name]) => name === 'Benefits & services applications submitted');
+  assert.deepEqual(benefitsRow, ['Benefits & services applications submitted', 5, 3, 1, 1]);
+});
+
+test('validateDataset validates TECHquity and SEA fund required columns', () => {
+  assert.equal(validateDataset(FILE_SPECS.techquity, [{ Timestamp: '1/1/2026' }]).ok, true);
+  assert.equal(validateDataset(FILE_SPECS.techquity, [{ Other: 'value' }]).ok, false);
+  assert.equal(validateDataset(FILE_SPECS.seaFund, [{ Timestamp: '1/1/2026' }]).ok, true);
+  assert.equal(validateDataset(FILE_SPECS.seaFund, [{ Other: 'value' }]).ok, false);
 });
