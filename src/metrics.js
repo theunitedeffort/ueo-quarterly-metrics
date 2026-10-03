@@ -112,6 +112,7 @@ export const FILE_SPECS = {
     label: 'VI-SPDAT Report (.csv or .xlsx)',
     exampleName: 'VI-SPDAT Report.csv',
     accept: '.xlsx,.csv',
+    multiple: true,
     requiredColumns: ['Date'],
     optionalColumns: [
       'Client Full Name',
@@ -122,7 +123,7 @@ export const FILE_SPECS = {
       'Assessing Program'
     ],
     tooltip:
-      'The file has one row for each VI-SPDAT assessment. For XLSX files, the app reads the Monthly sheet. Date determines the report period. If Assessment Name exists, the app counts only rows that contain SPDAT. This file replaces the VI-SPDAT count from Clients & Programs.',
+      'The file has one row for each VI-SPDAT assessment. Multiple CSV or XLSX files can be uploaded and will be combined. For XLSX files, the app reads the Monthly sheet. Date determines the report period. If Assessment Name exists, the app counts only rows that contain SPDAT. This file replaces the VI-SPDAT count from Clients & Programs.',
     metricUse: 'VI-SPDAT and Benefits & services applications submitted.'
   },
   housed: {
@@ -678,6 +679,41 @@ export function validateDataset(fileSpec, rows) {
     missingRequired,
     missingColumnGroups,
     rowCount: rows.length
+  };
+}
+
+export function combineDatasets(datasets) {
+  if (!Array.isArray(datasets)) {
+    return [];
+  }
+  return datasets.flatMap((dataset) => (Array.isArray(dataset) ? dataset : []));
+}
+
+export function validateDatasets(fileSpec, namedDatasets) {
+  if (!Array.isArray(namedDatasets) || namedDatasets.length === 0) {
+    return {
+      ok: false,
+      missingRequired: [],
+      missingColumnGroups: [],
+      rowCount: 0,
+      fileResults: []
+    };
+  }
+  const fileResults = namedDatasets.map(({ name, rows }) => ({
+    name,
+    ...validateDataset(fileSpec, rows)
+  }));
+  const allOk = fileResults.every((res) => res.ok);
+  const totalRows = fileResults.reduce((sum, res) => sum + res.rowCount, 0);
+  const missingRequired = [...new Set(fileResults.flatMap((res) => res.missingRequired))];
+  const missingColumnGroups = fileResults.flatMap((res) => res.missingColumnGroups);
+
+  return {
+    ok: allOk,
+    missingRequired,
+    missingColumnGroups,
+    rowCount: totalRows,
+    fileResults
   };
 }
 

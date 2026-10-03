@@ -1,6 +1,7 @@
 import {
   FILE_SPEC_LIST,
   buildMetricsTable,
+  combineDatasets,
   formatTableValue,
   matrixToRecords,
   parseCsv,
@@ -49,6 +50,7 @@ const state = {
   datasets: {},
   files: {},
   validations: {},
+  cardFiles: {},
   table: null
 };
 
@@ -113,12 +115,17 @@ function createFileCard(fileSpec) {
   tooltip.textContent = buildTooltipText(fileSpec);
   input.accept = fileSpec.accept ?? '.csv,text/csv';
   input.dataset.fileSpec = fileSpec.id;
-  input.addEventListener('change', () => handleFileChange(fileSpec, input.files?.[0]));
+  if (fileSpec.multiple) {
+    input.multiple = true;
+    input.addEventListener('change', () => handleMultipleFilesChange(fileSpec, input.files));
+  } else {
+    input.addEventListener('change', () => handleSingleFileChange(fileSpec, input.files?.[0]));
+  }
 
   elements.fileGrid.appendChild(fragment);
 }
 
-async function handleFileChange(fileSpec, file) {
+async function handleSingleFileChange(fileSpec, file) {
   if (!file) {
     delete state.datasets[fileSpec.id];
     delete state.files[fileSpec.id];
@@ -157,6 +164,186 @@ async function handleFileChange(fileSpec, file) {
   }
 
   render();
+}
+
+async function parseFileEntry(file, fileSpec) {
+  try {
+    const rows = /\.xlsx$/i.test(file.name)
+      ? await parseXlsxFile(file, fileSpec)
+      : parseCsv(await file.text());
+    const validation = validateDataset(fileSpec, rows);
+    return {
+      id: `${file.name}-${file.size}-${file.lastModified}`,
+      name: file.name,
+      rows,
+      validation,
+      error: null
+    };
+  } catch (error) {
+    return {
+      id: `${file.name}-${file.size}-${file.lastModified}`,
+      name: file.name,
+      rows: [],
+      validation: {
+        ok: false,
+        missingRequired: [],
+        missingColumnGroups: [],
+        rowCount: 0
+      },
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+async function handleMultipleFilesChange(fileSpec, fileList) {
+  const incoming = Array.from(fileList ?? []);
+  if (incoming.length === 0) {
+    return;
+  }
+
+  state.cardFiles[fileSpec.id] ??= [];
+  const cardFiles = state.cardFiles[fileSpec.id];
+
+  const parsedResults = await Promise.all(
+    incoming.map((file) => parseFileEntry(file, fileSpec))
+  );
+
+  parsedResults.forEach((result) => {
+    const existingIndex = cardFiles.findIndex((item) => item.name === result.name);
+    if (existingIndex >= 0) {
+      cardFiles[existingIndex] = result;
+    } else {
+      cardFiles.push(result);
+    }
+  });
+
+  const card = elements.fileGrid.querySelector(`[data-file-spec="${fileSpec.id}"]`);
+  const input = card?.querySelector('input');
+  if (input) {
+    input.value = '';
+  }
+
+  syncCardState(fileSpec);
+}
+
+function syncCardState(fileSpec) {
+  const cardFiles = state.cardFiles[fileSpec.id] ?? [];
+  const card = elements.fileGrid.querySelector(`[data-file-spec="${fileSpec.id}"]`);
+  const fileListEl = card?.querySelector('.file-list');
+
+  if (cardFiles.length === 0) {
+    delete state.datasets[fileSpec.id];
+    delete state.files[fileSpec.id];
+    delete state.validations[fileSpec.id];
+    updateFileStatus(fileSpec.id, 'Select a file.', 'idle');
+    if (fileListEl) {
+      fileListEl.replaceChildren();
+      fileListEl.hidden = true;
+    }
+    render();
+    return;
+  }
+
+  const combinedRows = combineDatasets(cardFiles.map((item) => item.rows));
+  const anyError = cardFiles.find((item) => item.error);
+  const invalidFiles = cardFiles.filter((item) => !item.validation.ok && !item.error);
+  const allOk = !anyError && invalidFiles.length === 0;
+
+  state.datasets[fileSpec.id] = combinedRows;
+  state.files[fileSpec.id] = cardFiles.map((item) => item.name).join(', ');
+  state.validations[fileSpec.id] = {
+    ok: allOk,
+    missingRequired: invalidFiles.flatMap((item) =>
+      item.validation.missingRequired.map((col) => `${col} (in ${item.name})`)
+    ),
+    missingColumnGroups: invalidFiles.flatMap((item) => item.validation.missingColumnGroups),
+    rowCount: combinedRows.length,
+    error: anyError ? `${anyError.name}: ${anyError.error}` : null
+  };
+
+  if (allOk) {
+    const statusMsg = cardFiles.length === 1
+      ? `The app loaded ${combinedRows.length.toLocaleString()} rows from ${cardFiles[0].name}.`
+      : `The app loaded ${combinedRows.length.toLocaleString()} rows from ${cardFiles.length} files.`;
+    updateFileStatus(fileSpec.id, statusMsg, 'ok');
+  } else if (anyError) {
+    updateFileStatus(fileSpec.id, `The app cannot read ${anyError.name}.`, 'error');
+  } else {
+    updateFileStatus(
+      fileSpec.id,
+      `The app loaded ${combinedRows.length.toLocaleString()} rows. Some files do not have all required columns.`,
+      'warning'
+    );
+  }
+
+  if (fileListEl) {
+    renderFileList(fileSpec, cardFiles, fileListEl);
+  }
+
+  render();
+}
+
+function renderFileList(fileSpec, cardFiles, fileListEl) {
+  fileListEl.replaceChildren();
+  if (cardFiles.length === 0) {
+    fileListEl.hidden = true;
+    return;
+  }
+
+  fileListEl.hidden = false;
+
+  if (cardFiles.length > 1) {
+    const header = document.createElement('div');
+    header.className = 'file-list-header';
+    const title = document.createElement('span');
+    title.textContent = `${cardFiles.length} files loaded`;
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'file-clear-button';
+    clearBtn.textContent = 'Clear all';
+    clearBtn.addEventListener('click', () => {
+      state.cardFiles[fileSpec.id] = [];
+      const card = elements.fileGrid.querySelector(`[data-file-spec="${fileSpec.id}"]`);
+      const input = card?.querySelector('input');
+      if (input) {
+        input.value = '';
+      }
+      syncCardState(fileSpec);
+    });
+    header.append(title, clearBtn);
+    fileListEl.appendChild(header);
+  }
+
+  cardFiles.forEach((fileItem) => {
+    const item = document.createElement('div');
+    item.className = 'file-item';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'file-item-name';
+    nameSpan.title = fileItem.name;
+    nameSpan.textContent = fileItem.name;
+
+    const countSpan = document.createElement('span');
+    countSpan.className = 'file-item-count';
+    countSpan.textContent = fileItem.error
+      ? 'Error'
+      : `${fileItem.rows.length.toLocaleString()} rows`;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'file-remove-button';
+    removeBtn.setAttribute('aria-label', `Remove ${fileItem.name}`);
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', () => {
+      state.cardFiles[fileSpec.id] = state.cardFiles[fileSpec.id].filter(
+        (f) => f.id !== fileItem.id
+      );
+      syncCardState(fileSpec);
+    });
+
+    item.append(nameSpan, countSpan, removeBtn);
+    fileListEl.appendChild(item);
+  });
 }
 
 function updateFileStatus(fileSpecId, message, tone) {
@@ -213,7 +400,8 @@ function renderWarnings() {
     }
 
     const fileSpec = FILE_SPEC_LIST.find((spec) => spec.id === fileSpecId);
-    const fileName = state.files[fileSpecId] ?? fileSpec?.label ?? fileSpecId;
+    const cardFiles = state.cardFiles[fileSpecId] ?? [];
+    const fileName = (cardFiles.length > 1 ? fileSpec?.label : state.files[fileSpecId]) ?? fileSpec?.label ?? fileSpecId;
     const messages = [];
     if (validation.error) {
       messages.push(validation.error);

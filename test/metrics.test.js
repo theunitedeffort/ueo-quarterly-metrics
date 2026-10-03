@@ -4,11 +4,13 @@ import assert from 'node:assert/strict';
 import {
   FILE_SPECS,
   buildMetricsTable,
+  combineDatasets,
   matrixToRecords,
   parseCsv,
   tableToClipboardHtml,
   tableToClipboardText,
-  validateDataset
+  validateDataset,
+  validateDatasets
 } from '../src/metrics.js';
 
 test('parseCsv handles quoted commas, escaped quotes, and CRLF input', () => {
@@ -463,3 +465,70 @@ test('validateDataset validates TECHquity and SEA fund required columns', () => 
   assert.equal(validateDataset(FILE_SPECS.seaFund, [{ Timestamp: '1/1/2026' }]).ok, true);
   assert.equal(validateDataset(FILE_SPECS.seaFund, [{ Other: 'value' }]).ok, false);
 });
+
+test('viSpdatReport file spec allows multiple file uploads', () => {
+  assert.equal(FILE_SPECS.viSpdatReport.multiple, true);
+});
+
+test('combineDatasets clubs multiple datasets into a single flat array', () => {
+  const ds1 = [{ id: 1 }, { id: 2 }];
+  const ds2 = [{ id: 3 }];
+  const ds3 = [{ id: 4 }, { id: 5 }];
+  assert.deepEqual(combineDatasets([ds1, ds2, ds3]), [
+    { id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }
+  ]);
+  assert.deepEqual(combineDatasets([]), []);
+  assert.deepEqual(combineDatasets(null), []);
+});
+
+test('validateDatasets validates each dataset in a multi-file collection', () => {
+  const valid1 = [{ Date: '01/01/2026', 'Assessment Name': 'VI-SPDAT' }];
+  const valid2 = [{ Date: '02/01/2026', 'Assessment Name': 'VI-SPDAT' }];
+  const invalid = [{ Name: 'Missing Date' }];
+
+  const allValidResult = validateDatasets(FILE_SPECS.viSpdatReport, [
+    { name: 'singles.csv', rows: valid1 },
+    { name: 'families.csv', rows: valid2 }
+  ]);
+  assert.equal(allValidResult.ok, true);
+  assert.equal(allValidResult.rowCount, 2);
+
+  const mixedResult = validateDatasets(FILE_SPECS.viSpdatReport, [
+    { name: 'singles.csv', rows: valid1 },
+    { name: 'bad.csv', rows: invalid }
+  ]);
+  assert.equal(mixedResult.ok, false);
+  assert.deepEqual(mixedResult.missingRequired, ['Date']);
+});
+
+test('VI-SPDAT clubs 3 CSV files together and calculates metrics across periods', () => {
+  const csvSingles = [
+    { Date: '01/10/2026', 'Assessment Name': 'VI-SPDAT Prescreen for Single Adults' },
+    { Date: '02/12/2026', 'Assessment Name': 'VI-SPDAT Prescreen for Single Adults' }
+  ];
+  const csvFamilies = [
+    { Date: '02/14/2026', 'Assessment Name': 'VI-F-SPDAT Prescreen for Families' },
+    { Date: '03/20/2026', 'Assessment Name': 'VI-F-SPDAT Prescreen for Families' }
+  ];
+  const csvYouth = [
+    { Date: '01/25/2026', 'Assessment Name': 'VI-Y-SPDAT Prescreen for Transition Age Youth' },
+    { Date: '03/05/2026', 'Assessment Name': 'VI-Y-SPDAT Prescreen for Transition Age Youth' }
+  ];
+
+  const clubbed = combineDatasets([csvSingles, csvFamilies, csvYouth]);
+  assert.equal(clubbed.length, 6);
+
+  const datasets = {
+    viSpdatReport: clubbed
+  };
+
+  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
+  const viSpdatRow = table.rows.find(([name]) => name === 'VI-SPDAT');
+  assert.deepEqual(viSpdatRow, ['VI-SPDAT', 6, 2, 2, 2]);
+
+  const benefitsRow = table.rows.find(
+    ([name]) => name === 'Benefits & services applications submitted'
+  );
+  assert.deepEqual(benefitsRow, ['Benefits & services applications submitted', 6, 2, 2, 2]);
+});
+
