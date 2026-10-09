@@ -1,0 +1,90 @@
+---
+title: "UEO Quarterly Metrics - 2026"
+format: html
+---
+
+![](https://images.squarespace-cdn.com/content/v1/5622cd82e4b0501d40689558/745cbb64-4d28-4b69-9e21-efe08bf38ba8/unitedeffortorganization.png){width=400px}
+
+```{python}
+#| echo: false
+import pandas as pd
+
+# Read the quarterly metrics CSV
+metrics_df = pd.read_csv('quarterly_metrics.csv')
+
+# Format the dataframe for display
+display_df = metrics_df.copy()
+
+# Dynamically get numeric columns (all columns except 'Type of Metric')
+numeric_cols = [col for col in display_df.columns if col != 'Type of Metric']
+
+# Convert columns to proper types - int for all except Onsite Volunteer hours
+for col in numeric_cols:
+    formatted_values = []
+    for idx, metric_name in enumerate(display_df['Type of Metric']):
+        value = display_df.loc[idx, col]
+        if metric_name == 'Onsite Volunteer hours':
+            formatted_values.append(float(value))
+        else:
+            formatted_values.append(int(float(value)))
+    display_df[col] = formatted_values
+
+# Display as a styled HTML table
+import IPython.display as ipd
+
+header_cols = list(display_df.columns)
+
+# Build styled HTML table with UEO brand colors
+html = '''<style>
+#ueo-metrics { border-collapse: collapse; width: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; margin: 1.5em 0; }
+#ueo-metrics th { background: #4B2E83; color: #fff; font-weight: 600; padding: 10px 14px; text-align: left; border: 1px solid #3a2366; }
+#ueo-metrics th:not(:first-child) { text-align: right; }
+#ueo-metrics td { padding: 9px 14px; border: 1px solid #d1d1d1; }
+#ueo-metrics td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+#ueo-metrics tbody tr:nth-child(even) { background: #f7f5fb; }
+#ueo-metrics tbody tr:nth-child(odd) { background: #fff; }
+#ueo-metrics tbody tr:hover { background: #ede8f5; }
+</style>
+<table id="ueo-metrics">
+<thead><tr>'''
+
+for col in header_cols:
+    html += f'<th>{col}</th>'
+html += '</tr></thead>\n<tbody>\n'
+
+for _, row in display_df.iterrows():
+    html += '<tr>'
+    for col in header_cols:
+        value = row[col]
+        if col == 'Type of Metric':
+            html += f'<td>{value}</td>'
+        elif row['Type of Metric'] == 'Onsite Volunteer hours':
+            html += f'<td>{value:,.2f}</td>'
+        else:
+            html += f'<td>{int(value):,}</td>'
+    html += '</tr>\n'
+
+html += '</tbody></table>'
+
+ipd.display(ipd.HTML(html))
+```
+
+### Key Metrics Explained
+
+- **Total number of new clients entered into Apricot**: Total number of new clients engaged during the period
+- **Clients signed engagement letter**: Clients who have formally engaged with our services through signed agreements
+- **Housing support**: Total housing-related services provided to clients, including housing applications submitted and enrollment in housing programs such as PSH, RRH, HUD-VASH, Section 8, VI-SPDAT assessments, home sharing, and housing recertification
+- **Housing applications - Data from Apricot**: Number of Clients & Programs entries that started in the period with a Housing Solution application program in Program Enrolled, such as PSH, RRH, HUD VASH, Section 8 interest list, Housing Choice Voucher, Search, or Home Sharing
+- **Housing retention**: Number of Clients & Programs entries that started in the period with Deposit & first month rent, Housing Recertification, Housing Retention, or Homelessness Prevention in Program Enrolled
+- **Active Onsite Volunteers**: Unique onsite volunteers present in all 3 months of the quarter. Remote volunteers are not included
+- **Onsite Volunteer hours**: Total volunteer hours contributed by onsite volunteers during the period. Remote volunteer hours are not counted
+- **Active Clients**: Clients who are actively engaged with UEO services, meaning they have both signed an engagement letter and have an "Active" status
+- **Semi-Active Clients**: Clients who use our mailing address, receipt UPLIFT stickers, or Caltrain clipper cards
+- **Clients active in Self-Sufficiency Program**: Clients currently participating in UEO's Self-Sufficiency Program who have completed at least one assessment, helping them work toward financial stability and independence
+
+```{python}
+#| echo: false
+from datetime import datetime
+import IPython.display as ipd
+ipd.display(ipd.Markdown(f"*Last updated: {datetime.now().strftime('%B %d, %Y')}*"))
+```

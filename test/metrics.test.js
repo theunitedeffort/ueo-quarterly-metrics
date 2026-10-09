@@ -155,6 +155,8 @@ test('buildMetricsTable calculates the uploaded-file quarterly metrics', () => {
     ['Active Clients', 1, 1, 0, 0],
     ['Semi-Active Clients', 1, 0, 1, 0],
     ['Housing support', 3, 1, 0, 2],
+    ['Housing applications - Data from Apricot', 0, 0, 0, 0],
+    ['Housing retention', 0, 0, 0, 0],
     ['Clients housed', 5, 2, 0, 3],
     ['Active Onsite Volunteers', 1, 2, 1, 1],
     ['Onsite Volunteer hours', 9.5, 6.5, 2, 1],
@@ -426,6 +428,30 @@ test('programs dataset excludes Employment Support, TECHquity Fund, and SEA Fund
   const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
   const row = table.rows.find(([name]) => name === 'Benefits & services applications submitted');
   assert.deepEqual(row, ['Benefits & services applications submitted', 1, 1, 0, 0]);
+});
+
+test('housing applications and retention count exact Program Enrolled matches in range', () => {
+  const datasets = {
+    programs: [
+      { 'Start Date': '01/05/2026', 'Program Enrolled': 'Housing Solution - PSH' },
+      { 'Start Date': '02/05/2026', 'Program Enrolled': 'Housing Solution -  HUD VASH' },
+      { 'Start Date': '02/06/2026', 'Program Enrolled': 'housing solution - search' },
+      { 'Start Date': '03/01/2026', 'Program Enrolled': 'Housing Solution - Housing Choice Voucher' },
+      { 'Start Date': '03/02/2026', 'Program Enrolled': 'Housing Solution - PSH Plus' },
+      { 'Start Date': '12/05/2025', 'Program Enrolled': 'Housing Solution - PSH' },
+      { 'Start Date': '01/07/2026', 'Program Enrolled': 'Housing Solutions - Deposit & first month rent' },
+      { 'Start Date': '02/10/2026', 'Program Enrolled': 'Housing Solution - Housing Retention' },
+      { 'Start Date': '03/08/2026', 'Program Enrolled': 'Homelessness Prevention' }
+    ]
+  };
+
+  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
+
+  const applicationsRow = table.rows.find(([name]) => name === 'Housing applications - Data from Apricot');
+  assert.deepEqual(applicationsRow, ['Housing applications - Data from Apricot', 4, 1, 2, 1]);
+
+  const retentionRow = table.rows.find(([name]) => name === 'Housing retention');
+  assert.deepEqual(retentionRow, ['Housing retention', 3, 1, 1, 1]);
 });
 
 test('TECHquity and SEA fund intakes are counted and added to benefits total', () => {

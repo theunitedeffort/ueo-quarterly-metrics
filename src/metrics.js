@@ -19,6 +19,8 @@ const METRIC_NAMES = {
   activeClients: 'Active Clients',
   semiActiveClients: 'Semi-Active Clients',
   housingSupport: 'Housing support',
+  housingApplicationsApricot: 'Housing applications - Data from Apricot',
+  housingRetention: 'Housing retention',
   clientsHoused: 'Clients housed',
   activeVolunteers: 'Active Onsite Volunteers',
   volunteerHours: 'Onsite Volunteer hours',
@@ -50,6 +52,25 @@ const HOUSING_SUPPORT_PROGRAMS = [
   'Affordable Housing Waitlist Application',
   'Permanent Supportive Housing',
   'Rapid Rehousing'
+];
+
+// Program Enrolled values (exact match, ignoring case and extra spaces) for the
+// "Housing applications - Data from Apricot" and "Housing retention" metrics.
+const HOUSING_APPLICATION_PROGRAMS = [
+  'Housing Solution - PSH',
+  'Housing Solution - RRH',
+  'Housing Solution - HUD VASH',
+  'Housing Solution - Section 8 interest list',
+  'Housing Solution - Housing Choice Voucher',
+  'Housing Solution - Search',
+  'Housing Solution - Home Sharing'
+];
+
+const HOUSING_RETENTION_PROGRAMS = [
+  'Housing Solutions - Deposit & first month rent',
+  'Housing Solution - Housing Recertification',
+  'Housing Solution - Housing Retention',
+  'Homelessness Prevention'
 ];
 
 const MANUALLY_ADDED_BENEFIT_PROGRAMS = [
@@ -742,16 +763,31 @@ const BENEFIT_EXCLUDED_PROGRAMS_LOWER = HOUSING_PROGRAMS_TO_EXCLUDE_FROM_BENEFIT
   (program) => program.toLowerCase()
 );
 
+const HOUSING_APPLICATION_PROGRAMS_NORMALIZED = new Set(
+  HOUSING_APPLICATION_PROGRAMS.map(normalizeProgramName)
+);
+const HOUSING_RETENTION_PROGRAMS_NORMALIZED = new Set(
+  HOUSING_RETENTION_PROGRAMS.map(normalizeProgramName)
+);
+
+function normalizeProgramName(value) {
+  return String(value ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 const programFlagsCache = new WeakMap();
 
 function getProgramFlags(row) {
   let flags = programFlagsCache.get(row);
   if (!flags) {
-    const value = String(getValue(row, 'Program Enrolled') ?? '').toLowerCase();
+    const rawValue = getValue(row, 'Program Enrolled');
+    const value = String(rawValue ?? '').toLowerCase();
+    const normalizedValue = normalizeProgramName(rawValue);
     flags = {
       housing: HOUSING_SUPPORT_PROGRAMS_LOWER.some((program) => value.includes(program)),
       excludedFromBenefits: BENEFIT_EXCLUDED_PROGRAMS_LOWER.some((program) => value.includes(program)),
-      viSpdat: value.includes('vi-spdat')
+      viSpdat: value.includes('vi-spdat'),
+      housingApplication: HOUSING_APPLICATION_PROGRAMS_NORMALIZED.has(normalizedValue),
+      housingRetention: HOUSING_RETENTION_PROGRAMS_NORMALIZED.has(normalizedValue)
     };
     programFlagsCache.set(row, flags);
   }
@@ -764,6 +800,24 @@ function countHousingSupport(datasets, period) {
     'Start Date',
     period,
     (row) => getProgramFlags(row).housing
+  );
+}
+
+function countHousingApplicationsApricot(datasets, period) {
+  return countRows(
+    datasets.programs,
+    'Start Date',
+    period,
+    (row) => getProgramFlags(row).housingApplication
+  );
+}
+
+function countHousingRetention(datasets, period) {
+  return countRows(
+    datasets.programs,
+    'Start Date',
+    period,
+    (row) => getProgramFlags(row).housingRetention
   );
 }
 
@@ -1091,6 +1145,10 @@ function valueForMetric(metricKey, datasets, period) {
       );
     case 'housingSupport':
       return countHousingSupport(datasets, period);
+    case 'housingApplicationsApricot':
+      return countHousingApplicationsApricot(datasets, period);
+    case 'housingRetention':
+      return countHousingRetention(datasets, period);
     case 'clientsHoused':
       return countClientsHoused(datasets, period);
     case 'activeVolunteers':
