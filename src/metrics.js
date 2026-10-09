@@ -28,6 +28,7 @@ const METRIC_NAMES = {
   employmentSupport: 'Employment support',
   employedClients: 'Got hired',
   sspActiveClients: 'Clients active in Self-Sufficiency Program',
+  activeVolunteers: 'Active volunteers',
   volunteerHours: 'Volunteer hours (onsite only)'
 };
 
@@ -925,6 +926,42 @@ function countClientsHoused(datasets, period) {
     );
 }
 
+// Volunteers count only from January 2025 onward.
+const ACTIVE_VOLUNTEER_START = new Date(2025, 0, 1);
+
+// A volunteer is active when they have a shift in each of the 3 months ending with the
+// period's last month. A quarter therefore checks its three months.
+function countActiveVolunteers(datasets, period) {
+  const lastMonthIndex = period.kind === 'month' ? period.monthIndex : period.monthIndexes.at(-1);
+  const lastMonthAbs = period.start.getFullYear() * 12 + lastMonthIndex;
+
+  let active = null;
+  for (let offset = 2; offset >= 0; offset -= 1) {
+    const year = Math.floor((lastMonthAbs - offset) / 12);
+    const monthIndex = (lastMonthAbs - offset) % 12;
+    const monthStart = new Date(year, monthIndex, 1);
+    if (monthStart < ACTIVE_VOLUNTEER_START) {
+      return 0;
+    }
+    const monthEnd = endOfMonth(year, monthIndex);
+    const volunteerIds = new Set(
+      cleanRows(datasets.volunteers)
+        .filter((row) => {
+          const date = getRowDate(row, 'Event Date');
+          return date && date >= monthStart && date <= monthEnd;
+        })
+        .map((row) => String(getValue(row, 'Volunteer ID') ?? '').trim())
+        .filter((volunteerId) => volunteerId)
+    );
+    active = active === null
+      ? volunteerIds
+      : new Set([...active].filter((volunteerId) => volunteerIds.has(volunteerId)));
+  }
+  return active.size;
+}
+
+const countActiveVolunteersForPeriod = memoizePeriodCount(countActiveVolunteers);
+
 function getVolunteerHours(row) {
   const shiftHours = parseNumber(getValue(row, 'Shift Hours'));
   if (shiftHours > 0) {
@@ -1086,6 +1123,8 @@ function valueForMetric(metricKey, datasets, period) {
       return countHousingRetention(datasets, period);
     case 'clientsHoused':
       return countClientsHoused(datasets, period);
+    case 'activeVolunteers':
+      return countActiveVolunteersForPeriod(datasets, period);
     case 'volunteerHours':
       return sumVolunteerHours(datasets, period);
     case 'sspActiveClients':

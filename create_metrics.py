@@ -537,6 +537,28 @@ def fixed_benefit_amount(period):
     return uplift + sum(caltrain_monthly_amount(month) for month in period["months"])
 
 
+ACTIVE_VOLUNTEER_START = datetime(2025, 1, 1)
+
+
+def count_active_volunteers(df, period):
+    """Volunteers with a shift in each of the 3 months ending with the period's last month.
+    Only months from January 2025 onward count."""
+    last_month_abs = period["year"] * 12 + period["months"][-1] - 1
+    month_sets = []
+    for offset in range(2, -1, -1):
+        year, month_index = divmod(last_month_abs - offset, 12)
+        month_start, month_end = month_bounds(year, month_index + 1)
+        if month_start < ACTIVE_VOLUNTEER_START:
+            return 0
+        in_month = df[
+            (df["Event Date"] >= month_start)
+            & (df["Event Date"] <= month_end)
+            & df["Volunteer ID"].notna()
+        ]
+        month_sets.append(set(in_month["Volunteer ID"].astype(str).str.strip()))
+    return len(set.intersection(*month_sets))
+
+
 def count_housing_applications(df, start_date, end_date):
     if df.empty or "Date Submitted" not in df.columns:
         return 0
@@ -833,6 +855,7 @@ def calculate_period_metrics(period):
                 period["label"],
             )
         ),
+        count_active_volunteers(df_volunteers, period),
         sum_volunteer_hours(df_volunteers_2026, start_date, end_date),
     ]
 
@@ -852,6 +875,7 @@ metric_names = [
     "Employment support",
     "Got hired",
     "Clients active in Self-Sufficiency Program",
+    "Active volunteers",
     "Volunteer hours (onsite only)",
 ]
 

@@ -84,6 +84,7 @@ ipd.display(ipd.HTML(html))
 - **Employment support**: Employment support enrollments that start in the period
 - **Got hired**: Clients whose Date Employed is in the period
 - **Clients active in Self-Sufficiency Program**: Clients currently participating in UEO's Self-Sufficiency Program who have completed at least one assessment, helping them work toward financial stability and independence
+- **Active volunteers**: Volunteers with a shift in each of the 3 months ending with the last month of the period. Only months from January 2025 onward count
 - **Volunteer hours (onsite only)**: Total volunteer hours contributed by onsite volunteers during the period. Remote volunteer hours are not counted
 
 ```{python}

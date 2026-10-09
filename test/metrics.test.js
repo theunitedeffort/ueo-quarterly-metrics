@@ -173,6 +173,7 @@ test('buildMetricsTable calculates the uploaded-file quarterly metrics', () => {
     ['Employment support', 0, 0, 0, 0],
     ['Got hired', 0, 0, 0, 0],
     ['Clients active in Self-Sufficiency Program', 2, 1, 2, 0],
+    ['Active volunteers', 1, 0, 0, 1],
     ['Volunteer hours (onsite only)', 9.5, 6.5, 2, 1]
   ]);
 });
@@ -410,6 +411,22 @@ test('benefit applications count every program except Housing Solutions and Home
 
   // Four programs count. UPLIFT is counted from its fixed amount, not from program rows.
   assert.deepEqual(benefitIncrease(datasets), [4, 4, 0, 0]);
+});
+
+test('Active volunteers need a shift in each of 3 months, counting from January 2025', () => {
+  const shift = (volunteerId, eventDate) => ({ 'Volunteer ID': volunteerId, 'Event Date': eventDate });
+  const datasets = {
+    volunteers: [
+      shift('a', '12/10/2024'), shift('a', '1/10/2025'), shift('a', '2/10/2025'), shift('a', '3/10/2025'),
+      shift('b', '1/10/2025'), shift('b', '3/10/2025'),
+      shift('c', '2/10/2025'), shift('c', '3/10/2025'), shift('c', '4/10/2025')
+    ]
+  };
+
+  const table = buildMetricsTable(datasets, { year: 2025, startMonth: 1, endMonth: 4 });
+  const row = table.rows.find(([name]) => name === 'Active volunteers');
+  // Jan and Feb 2025 have no 3-month window since 1/1/2025. Mar: a only. Apr: c only, since a has no April shift.
+  assert.deepEqual(row, ['Active volunteers', 1, 0, 0, 1, 1]);
 });
 
 test('Affordable Housing applications counts submitted Airtable rows in range', () => {
