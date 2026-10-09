@@ -369,9 +369,12 @@ function renderTable(table) {
 
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
-  table.headers.forEach((header) => {
+  // Quarter columns (Q1 2026, ...) are shaded so they stand out from the month columns.
+  const quarterColumns = table.headers.map((header) => header.startsWith('Q'));
+  table.headers.forEach((header, index) => {
     const th = document.createElement('th');
     th.textContent = header;
+    th.classList.toggle('quarter-col', quarterColumns[index]);
     headerRow.appendChild(th);
   });
   thead.appendChild(headerRow);
@@ -383,6 +386,7 @@ function renderTable(table) {
     row.forEach((value, index) => {
       const td = document.createElement('td');
       td.textContent = index === 0 ? value : formatTableValue(metricName, value);
+      td.classList.toggle('quarter-col', quarterColumns[index]);
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
