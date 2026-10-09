@@ -589,6 +589,16 @@ def count_exact_programs(df, start_date, end_date, programs_list):
     return int((period_mask & normalized.isin(targets)).sum())
 
 
+def count_unique_clients_served(df, end_date):
+    """Count unique Record IDs with a Start Date on or before end_date.
+    The df is already limited to the report year, so this is a running total."""
+    if df.empty or "Record ID" not in df.columns:
+        return 0
+    served = df[df["Start Date"] <= end_date]
+    record_ids = served["Record ID"].dropna().astype(str).str.strip()
+    return int(record_ids[record_ids != ""].nunique())
+
+
 def count_housing_applications(df, start_date, end_date):
     if df.empty or "Date Submitted" not in df.columns:
         return 0
@@ -916,6 +926,10 @@ def calculate_period_metrics(period):
         )
     )
 
+    unique_clients_served_count = int(
+        count_unique_clients_served(df_clients_programs_2026, end_date)
+    )
+
     base_benefits = int(
         count_program_enrollments_by_date(
             df_clients_programs_2026, start_date, end_date
@@ -956,6 +970,7 @@ def calculate_period_metrics(period):
         ),
         int(count_status_clients(df_2026, start_date, end_date, "Active")),
         int(count_status_clients(df_2026, start_date, end_date, "Semi Active")),
+        unique_clients_served_count,
         housing_support_count,
         housing_applications_apricot_count,
         housing_retention_count,
@@ -988,6 +1003,7 @@ metric_names = [
     "Clients signed engagement letter",
     "Active Clients",
     "Semi-Active Clients",
+    "# of unique clients served",
     "Housing support",
     "Housing applications - Data from Apricot",
     "Housing retention",

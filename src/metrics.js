@@ -18,6 +18,7 @@ const METRIC_NAMES = {
   engagementLetters: 'Clients signed engagement letter',
   activeClients: 'Active Clients',
   semiActiveClients: 'Semi-Active Clients',
+  uniqueClientsServed: '# of unique clients served',
   housingSupport: 'Housing support',
   housingApplicationsApricot: 'Housing applications - Data from Apricot',
   housingRetention: 'Housing retention',
@@ -901,6 +902,23 @@ const countEmploymentSupportForPeriod = memoizePeriodCount(countEmploymentSuppor
 const countTechquityForPeriod = memoizePeriodCount(countTechquity);
 const countSeaFundForPeriod = memoizePeriodCount(countSeaFund);
 
+// Running total: unique Record IDs with a Start Date from the start of the
+// report year through the end of the period.
+function countUniqueClientsServed(datasets, period) {
+  const yearStart = makeLocalDate(period.start.getFullYear(), 0, 1);
+  const recordIds = new Set();
+  for (const row of cleanRows(datasets.programs)) {
+    const recordId = String(getValue(row, 'Record ID') ?? '').trim();
+    const startDate = getRowDate(row, 'Start Date');
+    if (recordId && startDate && startDate >= yearStart && startDate <= period.end) {
+      recordIds.add(recordId);
+    }
+  }
+  return recordIds.size;
+}
+
+const countUniqueClientsServedForPeriod = memoizePeriodCount(countUniqueClientsServed);
+
 function countBenefits(datasets, period) {
   const programBenefits = countRows(
     datasets.programs,
@@ -1143,6 +1161,8 @@ function valueForMetric(metricKey, datasets, period) {
           normalizeStatus(getValue(row, 'Client Status')) === 'semi active' &&
           isAffirmative(getValue(row, 'Client Engagement Letter'))
       );
+    case 'uniqueClientsServed':
+      return countUniqueClientsServedForPeriod(datasets, period);
     case 'housingSupport':
       return countHousingSupport(datasets, period);
     case 'housingApplicationsApricot':

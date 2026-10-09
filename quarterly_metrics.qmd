@@ -73,6 +73,7 @@ ipd.display(ipd.HTML(html))
 
 - **Total number of new clients entered into Apricot**: Total number of new clients engaged during the period
 - **Clients signed engagement letter**: Clients who have formally engaged with our services through signed agreements
+- **# of unique clients served**: Unique Record IDs in Clients & Programs with a Start Date from the start of the year through the end of the period. This is a running total, so it does not go down over the year
 - **Housing support**: Total housing-related services provided to clients, including housing applications submitted and enrollment in housing programs such as PSH, RRH, HUD-VASH, Section 8, VI-SPDAT assessments, home sharing, and housing recertification
 - **Housing applications - Data from Apricot**: Number of Clients & Programs entries that started in the period with a Housing Solution application program in Program Enrolled, such as PSH, RRH, HUD VASH, Section 8 interest list, Housing Choice Voucher, Search, or Home Sharing
 - **Housing retention**: Number of Clients & Programs entries that started in the period with Deposit & first month rent, Housing Recertification, Housing Retention, or Homelessness Prevention in Program Enrolled

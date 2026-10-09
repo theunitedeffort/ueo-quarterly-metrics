@@ -154,6 +154,7 @@ test('buildMetricsTable calculates the uploaded-file quarterly metrics', () => {
     ['Clients signed engagement letter', 2, 1, 1, 0],
     ['Active Clients', 1, 1, 0, 0],
     ['Semi-Active Clients', 1, 0, 1, 0],
+    ['# of unique clients served', 0, 0, 0, 0],
     ['Housing support', 3, 1, 0, 2],
     ['Housing applications - Data from Apricot', 0, 0, 0, 0],
     ['Housing retention', 0, 0, 0, 0],
@@ -428,6 +429,23 @@ test('programs dataset excludes Employment Support, TECHquity Fund, and SEA Fund
   const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
   const row = table.rows.find(([name]) => name === 'Benefits & services applications submitted');
   assert.deepEqual(row, ['Benefits & services applications submitted', 1, 1, 0, 0]);
+});
+
+test('# of unique clients served counts distinct Record IDs as a running total', () => {
+  const datasets = {
+    programs: [
+      { 'Record ID': 'c-1', 'Start Date': '01/05/2026', 'Program Enrolled': 'CalFresh' },
+      { 'Record ID': 'c-1', 'Start Date': '01/20/2026', 'Program Enrolled': 'PSH' },
+      { 'Record ID': ' c-2 ', 'Start Date': '03/10/2026', 'Program Enrolled': 'CalFresh' },
+      { 'Record ID': '', 'Start Date': '03/11/2026', 'Program Enrolled': 'CalFresh' },
+      { 'Record ID': 'c-3', 'Start Date': '05/02/2026', 'Program Enrolled': 'CalFresh' },
+      { 'Record ID': 'c-4', 'Start Date': '12/05/2025', 'Program Enrolled': 'CalFresh' }
+    ]
+  };
+
+  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
+  const row = table.rows.find(([name]) => name === '# of unique clients served');
+  assert.deepEqual(row, ['# of unique clients served', 2, 1, 1, 2]);
 });
 
 test('housing applications and retention count exact Program Enrolled matches in range', () => {

@@ -87,17 +87,31 @@ def test_create_metrics_exports_each_2026_month_and_quarter(tmp_path, monkeypatc
                     {"Start Date": "10/05/2026", "Program Enrolled": "CalFresh"},
                     {"Start Date": "10/06/2026", "Program Enrolled": "MyConnectSV"},
                     {"Start Date": "10/07/2026", "Program Enrolled": "LifeLine Phone"},
-                    {"Start Date": "01/08/2026", "Program Enrolled": "Housing Solution - PSH"},
                     {
+                        "Record ID": "c-1",
+                        "Start Date": "01/08/2026",
+                        "Program Enrolled": "Housing Solution - PSH",
+                    },
+                    {
+                        "Record ID": "c-1",
                         "Start Date": "01/09/2026",
                         "Program Enrolled": "Housing Solutions - Deposit & first month rent",
                     },
                     {
+                        "Record ID": "c-2",
                         "Start Date": "03/07/2026",
                         "Program Enrolled": "housing solution -  section 8 interest list",
                     },
-                    {"Start Date": "03/08/2026", "Program Enrolled": "Homelessness Prevention"},
-                    {"Start Date": "03/09/2026", "Program Enrolled": "Housing Solution - PSH Plus"},
+                    {
+                        "Record ID": "c-3",
+                        "Start Date": "03/08/2026",
+                        "Program Enrolled": "Homelessness Prevention",
+                    },
+                    {
+                        "Record ID": "c-3",
+                        "Start Date": "03/09/2026",
+                        "Program Enrolled": "Housing Solution - PSH Plus",
+                    },
                 ]
             )
         raise AssertionError(f"Unexpected CSV read: {path}")
@@ -192,6 +206,7 @@ def test_create_metrics_exports_each_2026_month_and_quarter(tmp_path, monkeypatc
         "2", "1", "0", "1", "0", "0", "0", "0",
     ]
     assert rows["Housing retention"][:8] == ["2", "1", "0", "1", "0", "0", "0", "0"]
+    assert rows["# of unique clients served"][:8] == ["3", "1", "1", "3", "3", "3", "3", "3"]
     assert rows["Clients housed"][:8] == ["2", "2", "0", "0", "4", "4", "0", "0"]
     assert rows["Benefits & services applications submitted"][12:16] == [
         "1",
