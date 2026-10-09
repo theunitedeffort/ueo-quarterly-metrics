@@ -90,17 +90,17 @@ def test_create_metrics_exports_each_2026_month_and_quarter(tmp_path, monkeypatc
                     {
                         "Record ID": "c-1",
                         "Start Date": "01/08/2026",
-                        "Program Enrolled": "Housing Solution - PSH",
+                        "Program Enrolled": "Housing Solutions - Permanent Supportive Housing (PSH)",
                     },
                     {
                         "Record ID": "c-1",
                         "Start Date": "01/09/2026",
-                        "Program Enrolled": "Housing Solutions - Deposit & first month rent",
+                        "Program Enrolled": "Housing Solutions - Deposit and First Month Rent",
                     },
                     {
                         "Record ID": "c-2",
                         "Start Date": "03/07/2026",
-                        "Program Enrolled": "housing solution -  section 8 interest list",
+                        "Program Enrolled": "housing solutions -  section 8 interest list",
                     },
                     {
                         "Record ID": "c-3",

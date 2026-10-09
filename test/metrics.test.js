@@ -500,14 +500,14 @@ test('Caltrain 100 per year is spread across months so each quarter adds up', ()
 test('housing applications and retention count exact Program Enrolled matches in range', () => {
   const datasets = {
     programs: [
-      { 'Start Date': '01/05/2026', 'Program Enrolled': 'Housing Solution - PSH' },
-      { 'Start Date': '02/05/2026', 'Program Enrolled': 'Housing Solution -  HUD VASH' },
-      { 'Start Date': '02/06/2026', 'Program Enrolled': 'housing solution - search' },
-      { 'Start Date': '03/01/2026', 'Program Enrolled': 'Housing Solution - Housing Choice Voucher' },
-      { 'Start Date': '03/02/2026', 'Program Enrolled': 'Housing Solution - PSH Plus' },
-      { 'Start Date': '12/05/2025', 'Program Enrolled': 'Housing Solution - PSH' },
-      { 'Start Date': '01/07/2026', 'Program Enrolled': 'Housing Solutions - Deposit & first month rent' },
-      { 'Start Date': '02/10/2026', 'Program Enrolled': 'Housing Solution - Housing Retention' },
+      { 'Start Date': '01/05/2026', 'Program Enrolled': 'Housing Solutions - Permanent Supportive Housing (PSH)' },
+      { 'Start Date': '02/05/2026', 'Program Enrolled': 'Housing Solutions - HUD-VASH (Veteran Affairs Supportive Housing)' },
+      { 'Start Date': '02/06/2026', 'Program Enrolled': 'housing solutions -  search' },
+      { 'Start Date': '03/01/2026', 'Program Enrolled': 'Housing Solutions - Housing Choice Voucher' },
+      { 'Start Date': '03/02/2026', 'Program Enrolled': 'Housing Solutions - Permanent Supportive Housing (PSH) Plus' },
+      { 'Start Date': '12/05/2025', 'Program Enrolled': 'Housing Solutions - Permanent Supportive Housing (PSH)' },
+      { 'Start Date': '01/07/2026', 'Program Enrolled': 'Housing Solutions - Deposit and First Month Rent' },
+      { 'Start Date': '02/10/2026', 'Program Enrolled': 'Housing Solutions - Housing Retention' },
       { 'Start Date': '03/08/2026', 'Program Enrolled': 'Homelessness Prevention' }
     ]
   };

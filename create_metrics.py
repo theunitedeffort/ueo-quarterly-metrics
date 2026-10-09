@@ -386,22 +386,22 @@ if "Last Tagged Interaction At" in df_employment.columns:
         df_employment["Last Tagged Interaction At"], errors="coerce"
     ).dt.tz_localize(None)
 
-# Program Enrolled values (exact match, ignoring case and extra spaces) for the
-# "Housing applications - Data from Apricot" and "Housing retention" metrics.
+# Program Enrolled names as exported from Apricot (exact match, ignoring case and extra
+# spaces) for the "Housing applications - Data from Apricot" and "Housing retention" metrics.
 housing_application_programs = [
-    "Housing Solution - PSH",
-    "Housing Solution - RRH",
-    "Housing Solution - HUD VASH",
-    "Housing Solution - Section 8 interest list",
-    "Housing Solution - Housing Choice Voucher",
-    "Housing Solution - Search",
-    "Housing Solution - Home Sharing",
+    "Housing Solutions - Permanent Supportive Housing (PSH)",
+    "Housing Solutions - Rapid Rehousing (RRH)",
+    "Housing Solutions - HUD-VASH (Veteran Affairs Supportive Housing)",
+    "Housing Solutions - Section 8 Interest List",
+    "Housing Solutions - Housing Choice Voucher",
+    "Housing Solutions - Search",
+    "Housing Solutions - Home Sharing",
 ]
 
 housing_retention_programs = [
-    "Housing Solutions - Deposit & first month rent",
-    "Housing Solution - Housing Recertification",
-    "Housing Solution - Housing Retention",
+    "Housing Solutions - Deposit and First Month Rent",
+    "Housing Solutions - Housing Recertification",
+    "Housing Solutions - Housing Retention",
     "Homelessness Prevention",
 ]
 
