@@ -201,7 +201,6 @@ def test_create_metrics_exports_each_2026_month_and_quarter(tmp_path, monkeypatc
         for row in (tmp_path / "quarterly_metrics.csv").read_text().splitlines()[1:]
     }
 
-    assert rows["Housing support"][4:8] == ["2", "2", "0", "0"]
     assert rows["Housing applications - Data from Apricot"][:8] == [
         "2", "1", "0", "1", "0", "0", "0", "0",
     ]
@@ -214,13 +213,7 @@ def test_create_metrics_exports_each_2026_month_and_quarter(tmp_path, monkeypatc
     assert rows["Benefit applications submitted and services provided"][12:16] == [
         "156", "54", "52", "52",
     ]
-    assert rows["Clients housed"][:8] == ["2", "2", "0", "0", "4", "4", "0", "0"]
-    assert rows["Benefits & services applications submitted"][12:16] == [
-        "1",
-        "1",
-        "0",
-        "0",
-    ]
+    assert rows["Housed: Clients we helped got housing"][:8] == ["2", "2", "0", "0", "4", "4", "0", "0"]
 
 
 def test_create_metrics_accepts_month_range_args(tmp_path, monkeypatch):
@@ -328,7 +321,8 @@ def test_create_metrics_accepts_month_range_args(tmp_path, monkeypatch):
         row.split(",", 1)[0]: row.split(",")[1:]
         for row in lines[1:]
     }
-    assert rows["Benefits & services applications submitted"] == ["1", "0", "1"]
+    # Feb and Apr: 1 CalFresh + UPLIFT 44 + Caltrain 9. Mar: UPLIFT 44 + Caltrain 9.
+    assert rows["Benefit applications submitted and services provided"] == ["54", "53", "54"]
 
 
 def test_create_metrics_with_optional_csvs(tmp_path, monkeypatch):
@@ -375,18 +369,6 @@ def test_create_metrics_with_optional_csvs(tmp_path, monkeypatch):
         "F,4/27/26,Amazon\n"
     )
 
-    (tmp_path / "TECHquity_intake.csv").write_text(
-        "Timestamp,Client Name\n"
-        "1/10/2026 10:00:00,Client 1\n"
-        "2/12/2026 11:00:00,Client 2\n"
-    )
-
-    (tmp_path / "SEA_fund_intake.csv").write_text(
-        "Timestamp,Client Name\n"
-        "1/15/2026 14:00:00,Client 3\n"
-        "3/20/2026 16:00:00,Client 4\n"
-    )
-
     original_read_csv = pd.read_csv
 
     def fake_read_csv(path, *args, **kwargs):
@@ -409,8 +391,6 @@ def test_create_metrics_with_optional_csvs(tmp_path, monkeypatch):
             "LifeLine Phone List.csv",
             "employment_support_engagement_report_anonymized.csv",
             "Employed_Clients___2026.csv",
-            "TECHquity_intake.csv",
-            "SEA_fund_intake.csv",
         ]:
             return original_read_csv(tmp_path / path, *args, **kwargs)
         raise AssertionError(f"Unexpected CSV read: {path}")
@@ -477,12 +457,11 @@ def test_create_metrics_with_optional_csvs(tmp_path, monkeypatch):
         for row in lines[1:]
     }
 
-    assert rows["Housing support"][:4] == ["4", "2", "2", "0"]
-    assert rows["VI-SPDAT"][:4] == ["1", "0", "1", "0"]
-    assert rows["ID fee waiver"][:4] == ["2", "1", "1", "0"]
-    assert rows["Lifeline phone giveaway"][:4] == ["30", "10", "20", "0"]
-    assert rows["Benefits & services applications submitted"][:4] == ["40", "14", "24", "2"]
-    assert rows["Employment support provided"][:4] == ["3", "1", "1", "1"]
-    assert rows["TECHquity Fund"][:4] == ["2", "1", "1", "0"]
-    assert rows["SEA Fund Application"][:4] == ["2", "1", "0", "1"]
-    assert rows["Clients who got hired"][:4] == ["3", "0", "1", "2"]
+    # Jan: PSH 1 + ID waiver 1 + Lifeline 10 + UPLIFT 44 + Caltrain 9.
+    # Feb: VI-SPDAT 1 + ID waiver 1 + Lifeline 20 + UPLIFT 44 + Caltrain 9.
+    # Mar: UPLIFT 44 + Caltrain 9. Q1 uses UPLIFT 130 and Caltrain 27.
+    assert rows["Benefit applications submitted and services provided"][:4] == ["191", "65", "75", "53"]
+    # Two uploaded Airtable rows are submitted in Q1; the one marked Yes is a test.
+    assert rows["Affordable Housing applications"][:4] == ["2", "1", "1", "0"]
+    assert rows["Employment support"][:4] == ["3", "1", "1", "1"]
+    assert rows["Got hired"][:4] == ["3", "0", "1", "2"]

@@ -18,12 +18,12 @@ display_df = metrics_df.copy()
 # Dynamically get numeric columns (all columns except 'Type of Metric')
 numeric_cols = [col for col in display_df.columns if col != 'Type of Metric']
 
-# Convert columns to proper types - int for all except Onsite Volunteer hours
+# Convert columns to proper types - int for all except Volunteer hours (onsite only)
 for col in numeric_cols:
     formatted_values = []
     for idx, metric_name in enumerate(display_df['Type of Metric']):
         value = display_df.loc[idx, col]
-        if metric_name == 'Onsite Volunteer hours':
+        if metric_name == 'Volunteer hours (onsite only)':
             formatted_values.append(float(value))
         else:
             formatted_values.append(int(float(value)))
@@ -58,7 +58,7 @@ for _, row in display_df.iterrows():
         value = row[col]
         if col == 'Type of Metric':
             html += f'<td>{value}</td>'
-        elif row['Type of Metric'] == 'Onsite Volunteer hours':
+        elif row['Type of Metric'] == 'Volunteer hours (onsite only)':
             html += f'<td>{value:,.2f}</td>'
         else:
             html += f'<td>{int(value):,}</td>'
@@ -71,17 +71,20 @@ ipd.display(ipd.HTML(html))
 
 ### Key Metrics Explained
 
-- **Total number of new clients entered into Apricot**: Total number of new clients engaged during the period
-- **Clients signed engagement letter**: Clients who have formally engaged with our services through signed agreements
+- **New clients we entered in Apricot**: Total number of new clients engaged during the period
+- **New clients who signed engagement letters**: Clients who have formally engaged with our services through signed agreements
+- **Active clients (Total)**: Clients who are actively engaged with UEO services, meaning they have both signed an engagement letter and have an "Active" status
+- **Semi-active clients**: Clients who use our mailing address, receipt UPLIFT stickers, or Caltrain clipper cards
 - **# of unique clients served**: Unique Record IDs in Clients & Programs with a Start Date from the start of the year through the end of the period. This is a running total, so it does not go down over the year
-- **Housing support**: Total housing-related services provided to clients, including housing applications submitted and enrollment in housing programs such as PSH, RRH, HUD-VASH, Section 8, VI-SPDAT assessments, home sharing, and housing recertification
+- **Benefit applications submitted and services provided**: Clients & Programs enrollments that start in the period, excluding Housing Solution and Homelessness Prevention programs, plus VI-SPDAT, ID fee waivers, Lifeline phone applications, UPLIFT (130 per quarter, with each month rounded up from one third), and Caltrain (100 per year, spread across months)
+- **Affordable Housing applications**: Housing applications with a Date Submitted in the period from the Housing Applications Airtable export. Applications without a Date Submitted and test rows are not counted
 - **Housing applications - Data from Apricot**: Number of Clients & Programs entries that started in the period with a Housing Solution application program in Program Enrolled, such as PSH, RRH, HUD VASH, Section 8 interest list, Housing Choice Voucher, Search, or Home Sharing
 - **Housing retention**: Number of Clients & Programs entries that started in the period with Deposit & first month rent, Housing Recertification, Housing Retention, or Homelessness Prevention in Program Enrolled
-- **Active Onsite Volunteers**: Unique onsite volunteers present in all 3 months of the quarter. Remote volunteers are not included
-- **Onsite Volunteer hours**: Total volunteer hours contributed by onsite volunteers during the period. Remote volunteer hours are not counted
-- **Active Clients**: Clients who are actively engaged with UEO services, meaning they have both signed an engagement letter and have an "Active" status
-- **Semi-Active Clients**: Clients who use our mailing address, receipt UPLIFT stickers, or Caltrain clipper cards
+- **Housed: Clients we helped got housing**: Clients housed in the period, totaled across the housing placement columns
+- **Employment support**: Employment support enrollments that start in the period
+- **Got hired**: Clients whose Date Employed is in the period
 - **Clients active in Self-Sufficiency Program**: Clients currently participating in UEO's Self-Sufficiency Program who have completed at least one assessment, helping them work toward financial stability and independence
+- **Volunteer hours (onsite only)**: Total volunteer hours contributed by onsite volunteers during the period. Remote volunteer hours are not counted
 
 ```{python}
 #| echo: false

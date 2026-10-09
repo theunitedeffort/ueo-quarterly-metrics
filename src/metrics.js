@@ -13,51 +13,24 @@ const MONTH_NAMES = [
   'December'
 ];
 
+// Table rows, in display order.
 const METRIC_NAMES = {
-  newClients: 'Total number of new clients entered into Apricot',
-  engagementLetters: 'Clients signed engagement letter',
-  activeClients: 'Active Clients',
-  semiActiveClients: 'Semi-Active Clients',
+  newClients: 'New clients we entered in Apricot',
+  engagementLetters: 'New clients who signed engagement letters',
+  activeClients: 'Active clients (Total)',
+  semiActiveClients: 'Semi-active clients',
   uniqueClientsServed: '# of unique clients served',
-  housingSupport: 'Housing support',
+  benefitServicesProvided: 'Benefit applications submitted and services provided',
+  affordableHousingApplications: 'Affordable Housing applications',
   housingApplicationsApricot: 'Housing applications - Data from Apricot',
   housingRetention: 'Housing retention',
-  clientsHoused: 'Clients housed',
-  activeVolunteers: 'Active Onsite Volunteers',
-  volunteerHours: 'Onsite Volunteer hours',
+  clientsHoused: 'Housed: Clients we helped got housing',
+  employmentSupport: 'Employment support',
+  employedClients: 'Got hired',
   sspActiveClients: 'Clients active in Self-Sufficiency Program',
-  benefits: 'Benefits & services applications submitted',
-  benefitServicesProvided: 'Benefit applications submitted and services provided',
-  viSpdat: 'VI-SPDAT',
-  lifelinePhone: 'Lifeline phone giveaway',
-  idFeeWaiver: 'ID fee waiver',
-  employmentSupport: 'Employment support provided',
-  techquity: 'TECHquity Fund',
-  seaFund: 'SEA Fund Application',
-  employedClients: 'Clients who got hired'
+  volunteerHours: 'Volunteer hours (onsite only)'
 };
 
-const HOUSING_SUPPORT_PROGRAMS = [
-  'PSH',
-  'RRH',
-  'HUD-VASH',
-  'VASH',
-  'Section 8',
-  'Deposit & first month rent',
-  'Deposit and First Month Rent',
-  'Search',
-  'VI-SPDAT',
-  'Home sharing',
-  'Home-sharing',
-  'Housing recertification',
-  'Affordable housing',
-  'Affordable Housing Waitlist Application',
-  'Permanent Supportive Housing',
-  'Rapid Rehousing'
-];
-
-// Program Enrolled values (exact match, ignoring case and extra spaces) for the
-// "Housing applications - Data from Apricot" and "Housing retention" metrics.
 const HOUSING_APPLICATION_PROGRAMS = [
   'Housing Solution - PSH',
   'Housing Solution - RRH',
@@ -73,24 +46,6 @@ const HOUSING_RETENTION_PROGRAMS = [
   'Housing Solution - Housing Recertification',
   'Housing Solution - Housing Retention',
   'Homelessness Prevention'
-];
-
-const MANUALLY_ADDED_BENEFIT_PROGRAMS = [
-  'UPLIFT',
-  'MyConnectSV',
-  'LifeLine',
-  'Employment Support',
-  'TECHquity Fund',
-  'TECHquity',
-  'SEA Fund Application',
-  'SEA Fund'
-];
-
-const HOUSING_PROGRAMS_TO_EXCLUDE_FROM_BENEFITS = [
-  ...HOUSING_SUPPORT_PROGRAMS,
-  ...MANUALLY_ADDED_BENEFIT_PROGRAMS,
-  'Affordable Apartment',
-  'Affordable housing applications'
 ];
 
 const HOUSED_VALUE_COLUMNS = [
@@ -147,7 +102,7 @@ export const FILE_SPECS = {
     ],
     tooltip:
       'The file has one row for each VI-SPDAT assessment. Multiple CSV or XLSX files can be uploaded and will be combined. For XLSX files, the app reads the Monthly sheet. Date determines the report period. If Assessment Name exists, the app counts only rows that contain SPDAT. This file replaces the VI-SPDAT count from Clients & Programs.',
-    metricUse: 'VI-SPDAT and Benefits & services applications submitted.'
+    metricUse: 'VI-SPDAT and Benefit applications submitted and services provided.'
   },
   housed: {
     id: 'housed',
@@ -224,8 +179,8 @@ export const FILE_SPECS = {
     requiredColumns: ['Timestamp'],
     optionalColumns: [],
     tooltip:
-      'The file is optional. It has one row for each ID fee waiver. Timestamp contains a date and time. The app adds rows from the report period to Benefits & services applications submitted and the ID fee waiver total.',
-    metricUse: 'Benefits & services applications submitted and the ID fee waiver total.'
+      'The file is optional. It has one row for each ID fee waiver. Timestamp contains a date and time. The app adds rows from the report period to Benefit applications submitted and services provided and the ID fee waiver total.',
+    metricUse: 'Benefit applications submitted and services provided and the ID fee waiver total.'
   },
   lifelinePhone: {
     id: 'lifelinePhone',
@@ -234,8 +189,8 @@ export const FILE_SPECS = {
     requiredColumns: [],
     optionalColumns: [],
     tooltip:
-      'The file is optional and contains monthly totals. The app adds the "Monthly Total Applications" value for the report period to Benefits & services applications submitted.',
-    metricUse: 'Benefits & services applications submitted and the Lifeline phone total.'
+      'The file is optional and contains monthly totals. The app adds the "Monthly Total Applications" value for the report period to Benefit applications submitted and services provided.',
+    metricUse: 'Benefit applications submitted and services provided and the Lifeline phone total.'
   },
   employmentSupport: {
     id: 'employmentSupport',
@@ -245,27 +200,17 @@ export const FILE_SPECS = {
     optionalColumns: ['Enrollment Start Date', 'Last Tagged Interaction At'],
     tooltip:
       'The file is optional and has one row for each client enrollment. Enrollment Start Date determines the date. If this value is empty, Last Tagged Interaction At determines the date. The app does not count rows without a valid date.',
-    metricUse: 'Employment support provided and Benefits & services applications submitted.'
+    metricUse: 'Employment support and Benefit applications submitted and services provided.'
   },
-  techquity: {
-    id: 'techquity',
-    label: 'TECHquity Intake (optional)',
-    exampleName: 'TECHquity_intake.csv',
-    requiredColumns: ['Timestamp'],
-    optionalColumns: [],
+  housingApplications: {
+    id: 'housingApplications',
+    label: 'Housing Applications Airtable Export (optional)',
+    exampleName: 'housing applications airtable.csv',
+    requiredColumns: ['Date Submitted'],
+    optionalColumns: ['Name', 'Property', 'Status', 'Test Application'],
     tooltip:
-      'The file is optional. It has one row for each TECHquity intake. Timestamp contains a date and time. The app adds rows from the report period to Benefits & services applications submitted and the TECHquity Fund total.',
-    metricUse: 'TECHquity Fund and Benefits & services applications submitted.'
-  },
-  seaFund: {
-    id: 'seaFund',
-    label: 'SEA Fund Intake (optional)',
-    exampleName: 'SEA_fund_intake.csv',
-    requiredColumns: ['Timestamp'],
-    optionalColumns: [],
-    tooltip:
-      'The file is optional. It has one row for each SEA Fund intake. Timestamp contains a date and time. The app adds rows from the report period to Benefits & services applications submitted and the SEA Fund Application total.',
-    metricUse: 'SEA Fund Application and Benefits & services applications submitted.'
+      'The file is optional and has one row for each housing application. Date Submitted determines the report period. The app does not count rows without a Date Submitted, such as applications still in progress. Rows with a value in Test Application are ignored.',
+    metricUse: 'Affordable Housing applications.'
   },
   employedClients: {
     id: 'employedClients',
@@ -275,7 +220,7 @@ export const FILE_SPECS = {
     optionalColumns: [],
     tooltip:
       'The file is optional and has one row for each employed client. Date Employed determines the date. The app does not count rows without a valid date.',
-    metricUse: 'Clients who got hired.'
+    metricUse: 'Got hired.'
   }
 };
 
@@ -332,7 +277,8 @@ function isMarked(value) {
   }
 
   const normalized = String(value ?? '').trim().toLowerCase();
-  return ['true', 'checked', 'yes', 'y', '1'].includes(normalized);
+  // Airtable exports checked boxes as text such as "1 checked out of 1".
+  return ['true', 'yes', 'y', '1'].includes(normalized) || /\bchecked\b/.test(normalized);
 }
 
 function isAffirmative(value) {
@@ -760,11 +706,6 @@ function countRows(rows, dateColumns, period, predicate = () => true) {
   ).length;
 }
 
-const HOUSING_SUPPORT_PROGRAMS_LOWER = HOUSING_SUPPORT_PROGRAMS.map((program) => program.toLowerCase());
-const BENEFIT_EXCLUDED_PROGRAMS_LOWER = HOUSING_PROGRAMS_TO_EXCLUDE_FROM_BENEFITS.map(
-  (program) => program.toLowerCase()
-);
-
 const HOUSING_APPLICATION_PROGRAMS_NORMALIZED = new Set(
   HOUSING_APPLICATION_PROGRAMS.map(normalizeProgramName)
 );
@@ -785,8 +726,6 @@ function getProgramFlags(row) {
     const value = String(rawValue ?? '').toLowerCase();
     const normalizedValue = normalizeProgramName(rawValue);
     flags = {
-      housing: HOUSING_SUPPORT_PROGRAMS_LOWER.some((program) => value.includes(program)),
-      excludedFromBenefits: BENEFIT_EXCLUDED_PROGRAMS_LOWER.some((program) => value.includes(program)),
       viSpdat: value.includes('vi-spdat'),
       housingApplication: HOUSING_APPLICATION_PROGRAMS_NORMALIZED.has(normalizedValue),
       housingRetention: HOUSING_RETENTION_PROGRAMS_NORMALIZED.has(normalizedValue)
@@ -794,15 +733,6 @@ function getProgramFlags(row) {
     programFlagsCache.set(row, flags);
   }
   return flags;
-}
-
-function countHousingSupport(datasets, period) {
-  return countRows(
-    datasets.programs,
-    'Start Date',
-    period,
-    (row) => getProgramFlags(row).housing
-  );
 }
 
 function countHousingApplicationsApricot(datasets, period) {
@@ -878,14 +808,6 @@ function countEmploymentSupport(datasets, period) {
   }).length;
 }
 
-function countTechquity(datasets, period) {
-  return countRows(datasets.techquity, 'Timestamp', period);
-}
-
-function countSeaFund(datasets, period) {
-  return countRows(datasets.seaFund, 'Timestamp', period);
-}
-
 function memoizePeriodCount(fn) {
   const cache = new WeakMap();
   return (datasets, period) => {
@@ -900,8 +822,6 @@ const countViSpdatForPeriod = memoizePeriodCount(countViSpdat);
 const countIdFeeWaiverForPeriod = memoizePeriodCount(countIdFeeWaiver);
 const countLifelinePhoneForPeriod = memoizePeriodCount(countLifelinePhone);
 const countEmploymentSupportForPeriod = memoizePeriodCount(countEmploymentSupport);
-const countTechquityForPeriod = memoizePeriodCount(countTechquity);
-const countSeaFundForPeriod = memoizePeriodCount(countSeaFund);
 
 // Running total: unique Record IDs with a Start Date from the start of the
 // report year through the end of the period.
@@ -919,24 +839,6 @@ function countUniqueClientsServed(datasets, period) {
 }
 
 const countUniqueClientsServedForPeriod = memoizePeriodCount(countUniqueClientsServed);
-
-function countBenefits(datasets, period) {
-  const programBenefits = countRows(
-    datasets.programs,
-    'Start Date',
-    period,
-    (row) => !getProgramFlags(row).excludedFromBenefits
-  );
-  return (
-    programBenefits +
-    countViSpdatForPeriod(datasets, period) +
-    countIdFeeWaiverForPeriod(datasets, period) +
-    countLifelinePhoneForPeriod(datasets, period) +
-    countEmploymentSupportForPeriod(datasets, period) +
-    countTechquityForPeriod(datasets, period) +
-    countSeaFundForPeriod(datasets, period)
-  );
-}
 
 const UPLIFT_QUARTERLY_TOTAL = 130;
 const UPLIFT_MONTHLY_AMOUNT = Math.ceil(UPLIFT_QUARTERLY_TOTAL / 3);
@@ -1021,44 +923,6 @@ function countClientsHoused(datasets, period) {
         ),
       0
     );
-}
-
-function volunteerRowsInPeriod(rows, period) {
-  return cleanRows(rows).filter((row) => {
-    const volunteerId = String(getValue(row, 'Volunteer ID') ?? '').trim();
-    return volunteerId && rowDateInRange(row, 'Event Date', period);
-  });
-}
-
-function countActiveVolunteers(datasets, period) {
-  const rows = cleanRows(datasets.volunteers).filter((row) => {
-    const volunteerId = String(getValue(row, 'Volunteer ID') ?? '').trim();
-    return volunteerId && rowDateInRange(row, 'Event Date', period);
-  });
-
-  if (period.kind === 'month') {
-    return new Set(rows.map((row) => String(getValue(row, 'Volunteer ID')).trim())).size;
-  }
-
-  const monthlyVolunteerSets = period.monthIndexes.map((monthIndex) => {
-    const monthPeriod = {
-      start: makeLocalDate(period.start.getFullYear(), monthIndex, 1),
-      end: endOfMonth(period.start.getFullYear(), monthIndex)
-    };
-    return new Set(
-      volunteerRowsInPeriod(datasets.volunteers, monthPeriod).map((row) =>
-        String(getValue(row, 'Volunteer ID')).trim()
-      )
-    );
-  });
-
-  if (monthlyVolunteerSets.length === 0) {
-    return 0;
-  }
-
-  return [...monthlyVolunteerSets[0]].filter((volunteerId) =>
-    monthlyVolunteerSets.every((set) => set.has(volunteerId))
-  ).length;
 }
 
 function getVolunteerHours(row) {
@@ -1212,36 +1076,22 @@ function valueForMetric(metricKey, datasets, period) {
       );
     case 'uniqueClientsServed':
       return countUniqueClientsServedForPeriod(datasets, period);
-    case 'housingSupport':
-      return countHousingSupport(datasets, period);
+    case 'benefitServicesProvided':
+      return countBenefitServicesProvided(datasets, period);
+    case 'affordableHousingApplications':
+      return countRows(datasets.housingApplications, 'Date Submitted', period);
     case 'housingApplicationsApricot':
       return countHousingApplicationsApricot(datasets, period);
     case 'housingRetention':
       return countHousingRetention(datasets, period);
     case 'clientsHoused':
       return countClientsHoused(datasets, period);
-    case 'activeVolunteers':
-      return countActiveVolunteers(datasets, period);
     case 'volunteerHours':
       return sumVolunteerHours(datasets, period);
     case 'sspActiveClients':
       return countSspActiveClients(datasets, period);
-    case 'benefits':
-      return countBenefits(datasets, period);
-    case 'benefitServicesProvided':
-      return countBenefitServicesProvided(datasets, period);
-    case 'viSpdat':
-      return countViSpdatForPeriod(datasets, period);
-    case 'lifelinePhone':
-      return countLifelinePhoneForPeriod(datasets, period);
-    case 'idFeeWaiver':
-      return countIdFeeWaiverForPeriod(datasets, period);
     case 'employmentSupport':
       return countEmploymentSupportForPeriod(datasets, period);
-    case 'techquity':
-      return countTechquityForPeriod(datasets, period);
-    case 'seaFund':
-      return countSeaFundForPeriod(datasets, period);
     case 'employedClients':
       return countEmployedClients(datasets, period);
     default:

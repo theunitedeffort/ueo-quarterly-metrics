@@ -87,6 +87,8 @@ housing_apps_file = "Housing_Applications.csv"
 if not os.path.exists(housing_apps_file):
     if os.path.exists("Housing_Applications_anonymized.csv"):
         housing_apps_file = "Housing_Applications_anonymized.csv"
+    elif os.path.exists("housing applications airtable.csv"):
+        housing_apps_file = "housing applications airtable.csv"
 
 if os.path.exists(housing_apps_file):
     df_housing_apps = pd.read_csv(housing_apps_file)
@@ -134,19 +136,6 @@ if os.path.exists(employed_file):
     df_employed = pd.read_csv(employed_file)
 else:
     df_employed = pd.DataFrame(columns=["Name", "Date Employed"])
-
-techquity_file = "TECHquity_intake.csv"
-if os.path.exists(techquity_file):
-    df_techquity = pd.read_csv(techquity_file)
-else:
-    df_techquity = pd.DataFrame(columns=["Timestamp"])
-
-sea_fund_file = "SEA_fund_intake.csv"
-if os.path.exists(sea_fund_file):
-    df_sea_fund = pd.read_csv(sea_fund_file)
-else:
-    df_sea_fund = pd.DataFrame(columns=["Timestamp"])
-
 
 def fetch_airtable_data(base_id, table_id, token, view_id=None):
     """Fetch all records from an Airtable table, handling pagination."""
@@ -364,7 +353,9 @@ def clean_test_rows(df, test_cols=["Test Data", "Test Client", "Test Application
     mask = pd.Series(True, index=df.index)
     for col in test_cols:
         if col in df.columns:
-            is_affirmative = df[col].astype(str).str.strip().str.lower().isin(["true", "checked", "yes", "y", "1"])
+            values = df[col].astype(str).str.strip().str.lower()
+            # Airtable exports checked boxes as text such as "1 checked out of 1".
+            is_affirmative = values.isin(["true", "yes", "y", "1"]) | values.str.contains(r"\bchecked\b", regex=True)
             mask = mask & ~is_affirmative
     return df[mask]
 
@@ -373,8 +364,9 @@ df_housing_apps = clean_test_rows(df_housing_apps)
 df_id_fee_waiver = clean_test_rows(df_id_fee_waiver)
 
 if "Date Submitted" in df_housing_apps.columns:
+    # format="mixed" parses each value on its own; the default format is inferred from the first row only.
     df_housing_apps["Date Submitted"] = pd.to_datetime(
-        df_housing_apps["Date Submitted"], errors="coerce"
+        df_housing_apps["Date Submitted"], errors="coerce", format="mixed"
     )
 
 if "Timestamp" in df_id_fee_waiver.columns:
@@ -383,18 +375,6 @@ if "Timestamp" in df_id_fee_waiver.columns:
     )
 
 df_employment = clean_test_rows(df_employment)
-df_techquity = clean_test_rows(df_techquity)
-df_sea_fund = clean_test_rows(df_sea_fund)
-
-if "Timestamp" in df_techquity.columns:
-    df_techquity["Timestamp"] = pd.to_datetime(
-        df_techquity["Timestamp"], errors="coerce"
-    )
-
-if "Timestamp" in df_sea_fund.columns:
-    df_sea_fund["Timestamp"] = pd.to_datetime(
-        df_sea_fund["Timestamp"], errors="coerce"
-    )
 
 if "Enrollment Start Date" in df_employment.columns:
     df_employment["Enrollment Start Date"] = pd.to_datetime(
@@ -405,26 +385,6 @@ if "Last Tagged Interaction At" in df_employment.columns:
     df_employment["Last Tagged Interaction At"] = pd.to_datetime(
         df_employment["Last Tagged Interaction At"], errors="coerce"
     ).dt.tz_localize(None)
-
-# Define housing support programs to look for in Program Enrolled
-housing_support_programs = [
-    "PSH",
-    "RRH",
-    "HUD-VASH",
-    "VASH",
-    "Section 8",
-    "Deposit & first month rent",
-    "Deposit and First Month Rent",
-    "Search",
-    "VI-SPDAT",
-    "Home sharing",
-    "Home-sharing",
-    "Housing recertification",
-    "Affordable housing",
-    "Affordable Housing Waitlist Application",
-    "Permanent Supportive Housing",
-    "Rapid Rehousing",
-]
 
 # Program Enrolled values (exact match, ignoring case and extra spaces) for the
 # "Housing applications - Data from Apricot" and "Housing retention" metrics.
@@ -460,14 +420,6 @@ if not df_housing_apps.empty and "Date Submitted" in df_housing_apps.columns:
 df_id_fee_waiver_2026 = pd.DataFrame(columns=df_id_fee_waiver.columns)
 if not df_id_fee_waiver.empty and "Timestamp" in df_id_fee_waiver.columns:
     df_id_fee_waiver_2026 = df_id_fee_waiver[df_id_fee_waiver["Timestamp"].dt.year == report_year]
-
-df_techquity_2026 = pd.DataFrame(columns=df_techquity.columns)
-if not df_techquity.empty and "Timestamp" in df_techquity.columns:
-    df_techquity_2026 = df_techquity[df_techquity["Timestamp"].dt.year == report_year]
-
-df_sea_fund_2026 = pd.DataFrame(columns=df_sea_fund.columns)
-if not df_sea_fund.empty and "Timestamp" in df_sea_fund.columns:
-    df_sea_fund_2026 = df_sea_fund[df_sea_fund["Timestamp"].dt.year == report_year]
 
 df_employment["Date"] = pd.NaT
 if not df_employment.empty:
@@ -519,64 +471,6 @@ def count_in_range(
     if filter_col is not None:
         filtered = filtered[filtered[filter_col] == filter_val]
     return len(filtered)
-
-
-def count_active_volunteers(
-    df, month1_start, month1_end, month2_start, month2_end, month3_start, month3_end
-):
-    """Count volunteers present in all 3 months."""
-    # Remove rows with NaN Volunteer ID
-    df_clean = df[df["Volunteer ID"].notna()].copy()
-
-    # Get volunteers for each month
-    month1_volunteers = set(
-        df_clean[
-            (df_clean["Event Date"] >= month1_start)
-            & (df_clean["Event Date"] <= month1_end)
-        ]["Volunteer ID"].unique()
-    )
-    month2_volunteers = set(
-        df_clean[
-            (df_clean["Event Date"] >= month2_start)
-            & (df_clean["Event Date"] <= month2_end)
-        ]["Volunteer ID"].unique()
-    )
-    month3_volunteers = set(
-        df_clean[
-            (df_clean["Event Date"] >= month3_start)
-            & (df_clean["Event Date"] <= month3_end)
-        ]["Volunteer ID"].unique()
-    )
-
-    # Find volunteers present in all 3 months
-    active_volunteers = month1_volunteers & month2_volunteers & month3_volunteers
-    return len(active_volunteers)
-
-
-def count_unique_volunteers(df, start_date, end_date):
-    """Count unique volunteers with an event in a date range."""
-    if "Volunteer ID" not in df.columns:
-        return 0
-
-    filtered = df[
-        (df["Event Date"] >= start_date)
-        & (df["Event Date"] <= end_date)
-        & (df["Volunteer ID"].notna())
-    ]
-    return len(filtered["Volunteer ID"].unique())
-
-
-def count_housing_programs(df, start_date, end_date, programs_list):
-    """Count entries where Program Enrolled partially matches any program."""
-    period_mask = (df["Start Date"] >= start_date) & (df["Start Date"] <= end_date)
-    filtered = df[period_mask]
-    if filtered.empty:
-        return 0
-
-    # Check if Program Enrolled contains any of the program strings
-    pattern = "|".join([re.escape(prog) for prog in programs_list])
-    matches = filtered["Program Enrolled"].str.contains(pattern, case=False, na=False)
-    return int(matches.sum())
 
 
 def count_exact_programs(df, start_date, end_date, programs_list):
@@ -665,20 +559,6 @@ def count_employed_clients(df, start_date, end_date):
 
 
 def count_id_fee_waivers(df, start_date, end_date):
-    if df.empty or "Timestamp" not in df.columns:
-        return 0
-    filtered = df[(df["Timestamp"] >= start_date) & (df["Timestamp"] <= end_date)]
-    return len(filtered)
-
-
-def count_techquity(df, start_date, end_date):
-    if df.empty or "Timestamp" not in df.columns:
-        return 0
-    filtered = df[(df["Timestamp"] >= start_date) & (df["Timestamp"] <= end_date)]
-    return len(filtered)
-
-
-def count_sea_fund(df, start_date, end_date):
     if df.empty or "Timestamp" not in df.columns:
         return 0
     filtered = df[(df["Timestamp"] >= start_date) & (df["Timestamp"] <= end_date)]
@@ -805,46 +685,6 @@ def count_ssp_active_clients(
     return len(active_clients)
 
 
-# Calculate Benefits & services applications submitted using Clients & Programs data.
-# Housing support and manually added programs are excluded from this count.
-manually_added_benefit_programs = [
-    "UPLIFT",
-    "MyConnectSV",
-    "LifeLine",
-    "Employment Support",
-    "TECHquity Fund",
-    "TECHquity",
-    "SEA Fund Application",
-    "SEA Fund",
-]
-
-housing_programs_to_exclude = [
-    *housing_support_programs,
-    "Affordable Apartment",
-    "Affordable housing applications",
-    *manually_added_benefit_programs,
-]
-
-
-def count_program_enrollments_by_date(df, start_date, end_date):
-    """Count program enrollments where Start Date falls in the date range,
-    excluding housing support programs."""
-    filtered = df[(df["Start Date"] >= start_date) & (df["Start Date"] <= end_date)]
-
-    # Exclude rows where Program Enrolled contains housing programs
-    if filtered.empty:
-        return 0
-
-    # Create a pattern to match any housing program
-    pattern = "|".join([re.escape(prog) for prog in housing_programs_to_exclude])
-
-    # Keep only rows where Program Enrolled does NOT contain any housing program
-    excluded = filtered["Program Enrolled"].str.contains(pattern, case=False, na=False)
-    benefits_only = filtered[~excluded]
-
-    return len(benefits_only)
-
-
 def count_clients_housed(df, start_date, end_date):
     """Sum housed client counts across the housing placement columns."""
     filtered = df[(df["Date Housed"] >= start_date) & (df["Date Housed"] <= end_date)]
@@ -913,26 +753,6 @@ def count_status_clients(df, start_date, end_date, status):
     return len(filtered)
 
 
-def count_period_volunteers(df, period):
-    if "Volunteer ID" not in df.columns:
-        print("Warning: 'Volunteer ID' column not found. Volunteer count will be 0.")
-        return 0
-
-    if period["type"] == "month":
-        return count_unique_volunteers(df, period["start_date"], period["end_date"])
-
-    month_ranges = [month_bounds(period["year"], month) for month in period["months"]]
-    return count_active_volunteers(
-        df,
-        month_ranges[0][0],
-        month_ranges[0][1],
-        month_ranges[1][0],
-        month_ranges[1][1],
-        month_ranges[2][0],
-        month_ranges[2][1],
-    )
-
-
 def sum_volunteer_hours(df, start_date, end_date):
     hours = df[(df["Event Date"] >= start_date) & (df["Event Date"] <= end_date)][
         "Shift Hours"
@@ -940,18 +760,24 @@ def sum_volunteer_hours(df, start_date, end_date):
     return 0 if pd.isna(hours) else hours
 
 
+
 def calculate_period_metrics(period):
     start_date = period["start_date"]
     end_date = period["end_date"]
 
-    housing_support_count = int(
-        count_housing_programs(
-            df_clients_programs_2026,
-            start_date,
-            end_date,
-            housing_support_programs,
-        )
-    ) + int(count_housing_applications(df_housing_apps_2026, start_date, end_date))
+    benefit_programs_count = count_benefit_services_programs(
+        df_clients_programs_2026, start_date, end_date
+    )
+    vi_spdat_count = int(count_vi_spdat(df_clients_programs_2026, start_date, end_date))
+    id_fee_waiver_count = int(count_id_fee_waivers(df_id_fee_waiver_2026, start_date, end_date))
+    lifeline_count = int(get_lifeline_count(df_lifeline, period))
+    benefit_services_count = (
+        benefit_programs_count
+        + vi_spdat_count
+        + id_fee_waiver_count
+        + lifeline_count
+        + fixed_benefit_amount(period)
+    )
 
     housing_applications_apricot_count = int(
         count_exact_programs(
@@ -970,43 +796,11 @@ def calculate_period_metrics(period):
         )
     )
 
-    unique_clients_served_count = int(
-        count_unique_clients_served(df_clients_programs_2026, end_date)
-    )
-
-    base_benefits = int(
-        count_program_enrollments_by_date(
-            df_clients_programs_2026, start_date, end_date
-        )
-    )
-    vi_spdat_count = int(count_vi_spdat(df_clients_programs_2026, start_date, end_date))
-    id_fee_waiver_count = int(count_id_fee_waivers(df_id_fee_waiver_2026, start_date, end_date))
-    lifeline_count = int(get_lifeline_count(df_lifeline, period))
     employment_support_count = int(
         count_employment_support(df_employment_2026, start_date, end_date)
     )
-    techquity_count = int(count_techquity(df_techquity_2026, start_date, end_date))
-    sea_fund_count = int(count_sea_fund(df_sea_fund_2026, start_date, end_date))
-
-    benefits_total = (
-        base_benefits
-        + vi_spdat_count
-        + id_fee_waiver_count
-        + lifeline_count
-        + employment_support_count
-        + techquity_count
-        + sea_fund_count
-    )
     employed_clients_count = int(
         count_employed_clients(df_employed_2026, start_date, end_date)
-    )
-
-    benefit_services_count = (
-        count_benefit_services_programs(df_clients_programs_2026, start_date, end_date)
-        + vi_spdat_count
-        + id_fee_waiver_count
-        + lifeline_count
-        + fixed_benefit_amount(period)
     )
 
     return [
@@ -1022,13 +816,14 @@ def calculate_period_metrics(period):
         ),
         int(count_status_clients(df_2026, start_date, end_date, "Active")),
         int(count_status_clients(df_2026, start_date, end_date, "Semi Active")),
-        unique_clients_served_count,
-        housing_support_count,
+        int(count_unique_clients_served(df_clients_programs_2026, end_date)),
+        benefit_services_count,
+        int(count_housing_applications(df_housing_apps_2026, start_date, end_date)),
         housing_applications_apricot_count,
         housing_retention_count,
         int(count_clients_housed(df_housed_2026, start_date, end_date)),
-        int(count_period_volunteers(df_volunteers_2026, period)),
-        sum_volunteer_hours(df_volunteers_2026, start_date, end_date),
+        employment_support_count,
+        employed_clients_count,
         int(
             count_ssp_active_clients(
                 df_bridge_assessments,
@@ -1038,41 +833,26 @@ def calculate_period_metrics(period):
                 period["label"],
             )
         ),
-        benefits_total,
-        benefit_services_count,
-        vi_spdat_count,
-        lifeline_count,
-        id_fee_waiver_count,
-        employment_support_count,
-        techquity_count,
-        sea_fund_count,
-        employed_clients_count,
+        sum_volunteer_hours(df_volunteers_2026, start_date, end_date),
     ]
 
 
 periods = build_periods(report_year, report_args.start_month, report_args.end_month)
 metric_names = [
-    "Total number of new clients entered into Apricot",
-    "Clients signed engagement letter",
-    "Active Clients",
-    "Semi-Active Clients",
+    "New clients we entered in Apricot",
+    "New clients who signed engagement letters",
+    "Active clients (Total)",
+    "Semi-active clients",
     "# of unique clients served",
-    "Housing support",
+    "Benefit applications submitted and services provided",
+    "Affordable Housing applications",
     "Housing applications - Data from Apricot",
     "Housing retention",
-    "Clients housed",
-    "Active Onsite Volunteers",
-    "Onsite Volunteer hours",
+    "Housed: Clients we helped got housing",
+    "Employment support",
+    "Got hired",
     "Clients active in Self-Sufficiency Program",
-    "Benefits & services applications submitted",
-    "Benefit applications submitted and services provided",
-    "VI-SPDAT",
-    "Lifeline phone giveaway",
-    "ID fee waiver",
-    "Employment support provided",
-    "TECHquity Fund",
-    "SEA Fund Application",
-    "Clients who got hired",
+    "Volunteer hours (onsite only)",
 ]
 
 metrics_data = {"Type of Metric": metric_names}
@@ -1081,13 +861,13 @@ for period in periods:
 
 metrics_df = pd.DataFrame(metrics_data)
 
-# Format columns - convert to int for all except Onsite Volunteer hours.
+# Format columns - convert to int for all except Volunteer hours (onsite only).
 for period in periods:
     col = period["label"]
     formatted_col = []
     for idx, metric_name in enumerate(metrics_df["Type of Metric"]):
         value = metrics_df.loc[idx, col]
-        if metric_name == "Onsite Volunteer hours":
+        if metric_name == "Volunteer hours (onsite only)":
             formatted_col.append(value)
         else:
             formatted_col.append(int(value))
@@ -1102,7 +882,7 @@ with open(output_file, "w") as f:
         values = [row["Type of Metric"]]
         for period in periods:
             value = row[period["label"]]
-            if row["Type of Metric"] == "Onsite Volunteer hours":
+            if row["Type of Metric"] == "Volunteer hours (onsite only)":
                 values.append(str(round(value, 2)))
             else:
                 values.append(str(int(value)))

@@ -13,6 +13,16 @@ import {
   validateDatasets
 } from '../src/metrics.js';
 
+const BENEFIT_ROW = 'Benefit applications submitted and services provided';
+
+// How much each column of the benefit row goes up compared with empty datasets.
+function benefitIncrease(datasets, options = { year: 2026, quarter: 1 }) {
+  const findRow = (table) => table.rows.find(([name]) => name === BENEFIT_ROW);
+  const base = findRow(buildMetricsTable({}, options));
+  const row = findRow(buildMetricsTable(datasets, options));
+  return row.slice(1).map((value, index) => value - base[index + 1]);
+}
+
 test('parseCsv handles quoted commas, escaped quotes, and CRLF input', () => {
   const rows = parseCsv('Name,Notes\r\n"River, Inc.","Said ""yes"""\r\n');
 
@@ -150,27 +160,20 @@ test('buildMetricsTable calculates the uploaded-file quarterly metrics', () => {
     'March 2026'
   ]);
   assert.deepEqual(table.rows, [
-    ['Total number of new clients entered into Apricot', 3, 1, 1, 1],
-    ['Clients signed engagement letter', 2, 1, 1, 0],
-    ['Active Clients', 1, 1, 0, 0],
-    ['Semi-Active Clients', 1, 0, 1, 0],
+    ['New clients we entered in Apricot', 3, 1, 1, 1],
+    ['New clients who signed engagement letters', 2, 1, 1, 0],
+    ['Active clients (Total)', 1, 1, 0, 0],
+    ['Semi-active clients', 1, 0, 1, 0],
     ['# of unique clients served', 0, 0, 0, 0],
-    ['Housing support', 3, 1, 0, 2],
+    ['Benefit applications submitted and services provided', 161, 54, 54, 55],
+    ['Affordable Housing applications', 0, 0, 0, 0],
     ['Housing applications - Data from Apricot', 0, 0, 0, 0],
     ['Housing retention', 0, 0, 0, 0],
-    ['Clients housed', 5, 2, 0, 3],
-    ['Active Onsite Volunteers', 1, 2, 1, 1],
-    ['Onsite Volunteer hours', 9.5, 6.5, 2, 1],
+    ['Housed: Clients we helped got housing', 5, 2, 0, 3],
+    ['Employment support', 0, 0, 0, 0],
+    ['Got hired', 0, 0, 0, 0],
     ['Clients active in Self-Sufficiency Program', 2, 1, 2, 0],
-    ['Benefits & services applications submitted', 1, 0, 1, 0],
-    ['Benefit applications submitted and services provided', 161, 54, 54, 55],
-    ['VI-SPDAT', 0, 0, 0, 0],
-    ['Lifeline phone giveaway', 0, 0, 0, 0],
-    ['ID fee waiver', 0, 0, 0, 0],
-    ['Employment support provided', 0, 0, 0, 0],
-    ['TECHquity Fund', 0, 0, 0, 0],
-    ['SEA Fund Application', 0, 0, 0, 0],
-    ['Clients who got hired', 0, 0, 0, 0]
+    ['Volunteer hours (onsite only)', 9.5, 6.5, 2, 1]
   ]);
 });
 
@@ -193,15 +196,9 @@ test('buildMetricsTable limits output to the selected month range', () => {
     'April 2026'
   ]);
 
-  const benefitsRow = table.rows.find(
-    ([name]) => name === 'Benefits & services applications submitted'
-  );
-  assert.deepEqual(benefitsRow, [
-    'Benefits & services applications submitted',
-    1,
-    0,
-    1
-  ]);
+  // Feb and Apr: 1 CalFresh + UPLIFT 44 + Caltrain 9. Mar: UPLIFT 44 + Caltrain 9.
+  const benefitsRow = table.rows.find(([name]) => name === BENEFIT_ROW);
+  assert.deepEqual(benefitsRow, [BENEFIT_ROW, 54, 53, 54]);
 });
 
 test('buildMetricsTable can calculate SSP activity from the client summary export', () => {
@@ -258,13 +255,13 @@ test('tableToClipboardText creates spreadsheet-friendly TSV', () => {
     headers: ['Type of Metric', 'Q1 2026'],
     rows: [
       ['Housing support', 4],
-      ['Onsite Volunteer hours', 5.5]
+      ['Volunteer hours (onsite only)', 5.5]
     ]
   });
 
   assert.equal(
     text,
-    'Type of Metric\tQ1 2026\nHousing support\t4\nOnsite Volunteer hours\t5.50'
+    'Type of Metric\tQ1 2026\nHousing support\t4\nVolunteer hours (onsite only)\t5.50'
   );
 });
 
@@ -273,7 +270,7 @@ test('tableToClipboardHtml creates an email-safe table with inline formatting', 
     headers: ['Type of Metric', 'Q1 <2026>'],
     rows: [
       ['Housing & support', 4],
-      ['Onsite Volunteer hours', 5.5]
+      ['Volunteer hours (onsite only)', 5.5]
     ]
   });
 
@@ -285,7 +282,7 @@ test('tableToClipboardHtml creates an email-safe table with inline formatting', 
   assert.doesNotMatch(html, /<style>/);
 });
 
-test('ID fee waivers and lifeline phone lists are counted correctly', () => {
+test('ID fee waivers, lifeline phone list, and VI-SPDAT add to benefit applications', () => {
   const datasets = {
     programs: [
       { 'Start Date': '01/05/2026', 'Program Enrolled': 'PSH' },
@@ -301,22 +298,11 @@ test('ID fee waivers and lifeline phone lists are counted correctly', () => {
     ]
   };
 
+  // Jan: PSH 1 + ID waiver 1 + Lifeline 10. Feb: VI-SPDAT 1 + ID waiver 1 + Lifeline 20.
+  assert.deepEqual(benefitIncrease(datasets), [34, 12, 22, 0]);
+
   const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
-
-  const housingSupportRow = table.rows.find(([name]) => name === 'Housing support');
-  assert.deepEqual(housingSupportRow, ['Housing support', 2, 1, 1, 0]);
-
-  const viSpdatRow = table.rows.find(([name]) => name === 'VI-SPDAT');
-  assert.deepEqual(viSpdatRow, ['VI-SPDAT', 1, 0, 1, 0]);
-
-  const idWaiverRow = table.rows.find(([name]) => name === 'ID fee waiver');
-  assert.deepEqual(idWaiverRow, ['ID fee waiver', 2, 1, 1, 0]);
-
-  const lifelineRow = table.rows.find(([name]) => name === 'Lifeline phone giveaway');
-  assert.deepEqual(lifelineRow, ['Lifeline phone giveaway', 30, 10, 20, 0]);
-
-  const benefitsRow = table.rows.find(([name]) => name === 'Benefits & services applications submitted');
-  assert.deepEqual(benefitsRow, ['Benefits & services applications submitted', 33, 11, 22, 0]);
+  assert.equal(table.rows.some(([name]) => name === 'ID fee waiver'), false);
 });
 
 test('VI-SPDAT report upload overrides the Clients & Programs count', () => {
@@ -343,14 +329,8 @@ test('VI-SPDAT report upload overrides the Clients & Programs count', () => {
     ]
   };
 
-  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
-  const viSpdatRow = table.rows.find(([name]) => name === 'VI-SPDAT');
-  assert.deepEqual(viSpdatRow, ['VI-SPDAT', 3, 1, 2, 0]);
-
-  const benefitsRow = table.rows.find(
-    ([name]) => name === 'Benefits & services applications submitted'
-  );
-  assert.deepEqual(benefitsRow, ['Benefits & services applications submitted', 3, 1, 2, 0]);
+  // The uploaded report gives 1 in Jan and 2 in Feb. The Clients & Programs VI-SPDAT row is not used.
+  assert.deepEqual(benefitIncrease(datasets), [3, 1, 2, 0]);
 });
 
 test('VI-SPDAT falls back to Clients & Programs without a report upload', () => {
@@ -360,9 +340,7 @@ test('VI-SPDAT falls back to Clients & Programs without a report upload', () => 
     ]
   };
 
-  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
-  const viSpdatRow = table.rows.find(([name]) => name === 'VI-SPDAT');
-  assert.deepEqual(viSpdatRow, ['VI-SPDAT', 1, 1, 0, 0]);
+  assert.deepEqual(benefitIncrease(datasets), [1, 1, 0, 0]);
 });
 
 test('matrixToRecords builds records from workbook rows and skips blank rows', () => {
@@ -396,8 +374,8 @@ test('employment support report counts enrollments correctly based on fallback d
   };
 
   const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
-  const row = table.rows.find(([name]) => name === 'Employment support provided');
-  assert.deepEqual(row, ['Employment support provided', 2, 1, 1, 0]);
+  const row = table.rows.find(([name]) => name === 'Employment support');
+  assert.deepEqual(row, ['Employment support', 2, 1, 1, 0]);
 });
 
 test('employed clients report counts hires correctly based on Date Employed with regex fallback', () => {
@@ -413,23 +391,41 @@ test('employed clients report counts hires correctly based on Date Employed with
   };
 
   const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
-  const row = table.rows.find(([name]) => name === 'Clients who got hired');
-  assert.deepEqual(row, ['Clients who got hired', 3, 0, 1, 2]);
+  const row = table.rows.find(([name]) => name === 'Got hired');
+  assert.deepEqual(row, ['Got hired', 3, 0, 1, 2]);
 });
 
-test('programs dataset excludes Employment Support, TECHquity Fund, and SEA Fund Application', () => {
+test('benefit applications count every program except Housing Solutions and Homelessness Prevention', () => {
   const datasets = {
     programs: [
       { 'Start Date': '01/05/2026', 'Program Enrolled': 'Employment Support' },
       { 'Start Date': '01/06/2026', 'Program Enrolled': 'TECHquity Fund' },
       { 'Start Date': '01/07/2026', 'Program Enrolled': 'SEA Fund Application' },
-      { 'Start Date': '01/08/2026', 'Program Enrolled': 'CalFresh' }
+      { 'Start Date': '01/08/2026', 'Program Enrolled': 'CalFresh' },
+      { 'Start Date': '01/09/2026', 'Program Enrolled': 'Housing Solution - PSH' },
+      { 'Start Date': '01/10/2026', 'Program Enrolled': 'Homelessness Prevention' },
+      { 'Start Date': '01/11/2026', 'Program Enrolled': 'UPLIFT Pass' }
+    ]
+  };
+
+  // Four programs count. UPLIFT is counted from its fixed amount, not from program rows.
+  assert.deepEqual(benefitIncrease(datasets), [4, 4, 0, 0]);
+});
+
+test('Affordable Housing applications counts submitted Airtable rows in range', () => {
+  const datasets = {
+    housingApplications: [
+      { 'Date Submitted': '11/1/2025 11:16am', Status: 'Submitted' },
+      { 'Date Submitted': '1/5/2026 10:00am', Status: 'Submitted' },
+      { 'Date Submitted': '2/10/2026 9:00am', Status: 'Submitted' },
+      { 'Date Submitted': '', Status: 'In Progress' },
+      { 'Date Submitted': '3/3/2026 2:00pm', Status: 'Submitted', 'Test Application': '1 checked out of 1' }
     ]
   };
 
   const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
-  const row = table.rows.find(([name]) => name === 'Benefits & services applications submitted');
-  assert.deepEqual(row, ['Benefits & services applications submitted', 1, 1, 0, 0]);
+  const row = table.rows.find(([name]) => name === 'Affordable Housing applications');
+  assert.deepEqual(row, ['Affordable Housing applications', 2, 1, 1, 0]);
 });
 
 test('# of unique clients served counts distinct Record IDs as a running total', () => {
@@ -508,44 +504,6 @@ test('housing applications and retention count exact Program Enrolled matches in
   assert.deepEqual(retentionRow, ['Housing retention', 3, 1, 1, 1]);
 });
 
-test('TECHquity and SEA fund intakes are counted and added to benefits total', () => {
-  const datasets = {
-    employmentSupport: [
-      { 'Enrollment Start Date': '01/15/2026', 'Last Tagged Interaction At': '' }
-    ],
-    techquity: [
-      { Timestamp: '1/20/2026 10:00:00' },
-      { Timestamp: '2/15/2026 14:30:00' },
-      { Timestamp: '4/05/2026 09:00:00' }
-    ],
-    seaFund: [
-      { Timestamp: '1/22/2026 11:00:00' },
-      { Timestamp: '3/10/2026 16:00:00' }
-    ]
-  };
-
-  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
-
-  const techRow = table.rows.find(([name]) => name === 'TECHquity Fund');
-  assert.deepEqual(techRow, ['TECHquity Fund', 2, 1, 1, 0]);
-
-  const seaRow = table.rows.find(([name]) => name === 'SEA Fund Application');
-  assert.deepEqual(seaRow, ['SEA Fund Application', 2, 1, 0, 1]);
-
-  const empRow = table.rows.find(([name]) => name === 'Employment support provided');
-  assert.deepEqual(empRow, ['Employment support provided', 1, 1, 0, 0]);
-
-  const benefitsRow = table.rows.find(([name]) => name === 'Benefits & services applications submitted');
-  assert.deepEqual(benefitsRow, ['Benefits & services applications submitted', 5, 3, 1, 1]);
-});
-
-test('validateDataset validates TECHquity and SEA fund required columns', () => {
-  assert.equal(validateDataset(FILE_SPECS.techquity, [{ Timestamp: '1/1/2026' }]).ok, true);
-  assert.equal(validateDataset(FILE_SPECS.techquity, [{ Other: 'value' }]).ok, false);
-  assert.equal(validateDataset(FILE_SPECS.seaFund, [{ Timestamp: '1/1/2026' }]).ok, true);
-  assert.equal(validateDataset(FILE_SPECS.seaFund, [{ Other: 'value' }]).ok, false);
-});
-
 test('viSpdatReport file spec allows multiple file uploads', () => {
   assert.equal(FILE_SPECS.viSpdatReport.multiple, true);
 });
@@ -602,13 +560,5 @@ test('VI-SPDAT clubs 3 CSV files together and calculates metrics across periods'
     viSpdatReport: clubbed
   };
 
-  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
-  const viSpdatRow = table.rows.find(([name]) => name === 'VI-SPDAT');
-  assert.deepEqual(viSpdatRow, ['VI-SPDAT', 6, 2, 2, 2]);
-
-  const benefitsRow = table.rows.find(
-    ([name]) => name === 'Benefits & services applications submitted'
-  );
-  assert.deepEqual(benefitsRow, ['Benefits & services applications submitted', 6, 2, 2, 2]);
+  assert.deepEqual(benefitIncrease(datasets), [6, 2, 2, 2]);
 });
-
