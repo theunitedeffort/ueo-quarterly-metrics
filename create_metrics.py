@@ -354,8 +354,8 @@ def clean_test_rows(df, test_cols=["Test Data", "Test Client", "Test Application
     for col in test_cols:
         if col in df.columns:
             values = df[col].astype(str).str.strip().str.lower()
-            # Airtable exports checked boxes as text such as "1 checked out of 1".
-            is_affirmative = values.isin(["true", "yes", "y", "1"]) | values.str.contains(r"\bchecked\b", regex=True)
+            # Airtable exports checkboxes as text such as "1 checked out of 1" (checked) or "0 checked out of 1" (unchecked).
+            is_affirmative = values.isin(["true", "checked", "yes", "y", "1"]) | values.str.contains(r"^[1-9]\d*\s+checked\b", regex=True)
             mask = mask & ~is_affirmative
     return df[mask]
 

@@ -280,8 +280,8 @@ function isMarked(value) {
   }
 
   const normalized = String(value ?? '').trim().toLowerCase();
-  // Airtable exports checked boxes as text such as "1 checked out of 1".
-  return ['true', 'yes', 'y', '1'].includes(normalized) || /\bchecked\b/.test(normalized);
+  // Airtable exports checkboxes as text such as "1 checked out of 1" (checked) or "0 checked out of 1" (unchecked).
+  return ['true', 'checked', 'yes', 'y', '1'].includes(normalized) || /^[1-9]\d*\s+checked\b/.test(normalized);
 }
 
 function isAffirmative(value) {

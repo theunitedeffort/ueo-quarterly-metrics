@@ -429,6 +429,20 @@ test('Active volunteers need a shift in each of 3 months, counting from January 
   assert.deepEqual(row, ['Active volunteers', 1, 0, 0, 1, 1]);
 });
 
+test('Airtable checkbox text only marks rows as test data when the box is checked', () => {
+  const datasets = {
+    volunteers: [
+      { 'Volunteer ID': 'a', 'Event Date': '1/10/2026', 'Shift Hours': 2, 'Test Data': '0 checked out of 1' },
+      { 'Volunteer ID': 'b', 'Event Date': '1/10/2026', 'Shift Hours': 3, 'Test Data': '1 checked out of 1' }
+    ]
+  };
+
+  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
+  // Only volunteer a counts: 2 hours, not 5.
+  const row = table.rows.find(([name]) => name === 'Volunteer hours (onsite only)');
+  assert.equal(row[2], 2);
+});
+
 test('Affordable Housing applications counts submitted Airtable rows in range', () => {
   const datasets = {
     housingApplications: [
