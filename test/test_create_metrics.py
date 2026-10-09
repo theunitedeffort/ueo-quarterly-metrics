@@ -207,6 +207,13 @@ def test_create_metrics_exports_each_2026_month_and_quarter(tmp_path, monkeypatc
     ]
     assert rows["Housing retention"][:8] == ["2", "1", "0", "1", "0", "0", "0", "0"]
     assert rows["# of unique clients served"][:8] == ["3", "1", "1", "3", "3", "3", "3", "3"]
+    # Q1: 1 CalFresh + UPLIFT 130 + Caltrain 27. Jan: 1 + UPLIFT 44 + Caltrain 9.
+    assert rows["Benefit applications submitted and services provided"][:4] == [
+        "158", "54", "53", "53",
+    ]
+    assert rows["Benefit applications submitted and services provided"][12:16] == [
+        "156", "54", "52", "52",
+    ]
     assert rows["Clients housed"][:8] == ["2", "2", "0", "0", "4", "4", "0", "0"]
     assert rows["Benefits & services applications submitted"][12:16] == [
         "1",

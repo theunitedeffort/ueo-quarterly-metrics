@@ -27,6 +27,7 @@ const METRIC_NAMES = {
   volunteerHours: 'Onsite Volunteer hours',
   sspActiveClients: 'Clients active in Self-Sufficiency Program',
   benefits: 'Benefits & services applications submitted',
+  benefitServicesProvided: 'Benefit applications submitted and services provided',
   viSpdat: 'VI-SPDAT',
   lifelinePhone: 'Lifeline phone giveaway',
   idFeeWaiver: 'ID fee waiver',
@@ -937,6 +938,54 @@ function countBenefits(datasets, period) {
   );
 }
 
+const UPLIFT_QUARTERLY_TOTAL = 130;
+const UPLIFT_MONTHLY_AMOUNT = Math.ceil(UPLIFT_QUARTERLY_TOTAL / 3);
+const CALTRAIN_YEARLY_TOTAL = 100;
+
+// Spreads the yearly total across 12 months. Any remainder goes to the first months.
+function caltrainMonthlyAmount(monthIndex) {
+  const base = Math.floor(CALTRAIN_YEARLY_TOTAL / 12);
+  const extra = CALTRAIN_YEARLY_TOTAL % 12;
+  return base + (monthIndex < extra ? 1 : 0);
+}
+
+function fixedBenefitAmount(period) {
+  const monthIndexes = period.kind === 'month' ? [period.monthIndex] : period.monthIndexes;
+  const caltrain = monthIndexes.reduce((sum, monthIndex) => sum + caltrainMonthlyAmount(monthIndex), 0);
+  const uplift = period.kind === 'quarter' ? UPLIFT_QUARTERLY_TOTAL : UPLIFT_MONTHLY_AMOUNT;
+  return uplift + caltrain;
+}
+
+// Programs counted separately below (or excluded by request) are left out of the program count.
+const BENEFIT_SERVICES_EXCLUDED_PROGRAMS_LOWER = [
+  'Homelessness Prevention',
+  'Housing Solution',
+  'VI-SPDAT',
+  'UPLIFT',
+  'LifeLine',
+  'Caltrain',
+  'ID fee waiver'
+].map((program) => program.toLowerCase());
+
+function countBenefitServicesProvided(datasets, period) {
+  const programEnrollments = countRows(
+    datasets.programs,
+    'Start Date',
+    period,
+    (row) => {
+      const value = String(getValue(row, 'Program Enrolled') ?? '').toLowerCase();
+      return !BENEFIT_SERVICES_EXCLUDED_PROGRAMS_LOWER.some((program) => value.includes(program));
+    }
+  );
+  return (
+    programEnrollments +
+    countViSpdatForPeriod(datasets, period) +
+    countIdFeeWaiverForPeriod(datasets, period) +
+    countLifelinePhoneForPeriod(datasets, period) +
+    fixedBenefitAmount(period)
+  );
+}
+
 function extractDateStr(val) {
   if (!val) return null;
   const valStr = String(val).trim();
@@ -1179,6 +1228,8 @@ function valueForMetric(metricKey, datasets, period) {
       return countSspActiveClients(datasets, period);
     case 'benefits':
       return countBenefits(datasets, period);
+    case 'benefitServicesProvided':
+      return countBenefitServicesProvided(datasets, period);
     case 'viSpdat':
       return countViSpdatForPeriod(datasets, period);
     case 'lifelinePhone':

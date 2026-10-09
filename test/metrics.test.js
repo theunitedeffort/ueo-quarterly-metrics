@@ -163,6 +163,7 @@ test('buildMetricsTable calculates the uploaded-file quarterly metrics', () => {
     ['Onsite Volunteer hours', 9.5, 6.5, 2, 1],
     ['Clients active in Self-Sufficiency Program', 2, 1, 2, 0],
     ['Benefits & services applications submitted', 1, 0, 1, 0],
+    ['Benefit applications submitted and services provided', 161, 54, 54, 55],
     ['VI-SPDAT', 0, 0, 0, 0],
     ['Lifeline phone giveaway', 0, 0, 0, 0],
     ['ID fee waiver', 0, 0, 0, 0],
@@ -446,6 +447,41 @@ test('# of unique clients served counts distinct Record IDs as a running total',
   const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
   const row = table.rows.find(([name]) => name === '# of unique clients served');
   assert.deepEqual(row, ['# of unique clients served', 2, 1, 1, 2]);
+});
+
+test('benefit applications and services adds UPLIFT, Caltrain, VI-SPDAT, and ID fee waivers', () => {
+  const datasets = {
+    programs: [
+      { 'Start Date': '01/05/2026', 'Program Enrolled': 'CalFresh' },
+      { 'Start Date': '01/06/2026', 'Program Enrolled': 'Housing Solution - PSH' },
+      { 'Start Date': '02/01/2026', 'Program Enrolled': 'Homelessness Prevention' },
+      { 'Start Date': '02/02/2026', 'Program Enrolled': 'Housing Solutions - Deposit & first month rent' },
+      { 'Start Date': '03/03/2026', 'Program Enrolled': 'VI-SPDAT' },
+      { 'Start Date': '01/07/2026', 'Program Enrolled': 'UPLIFT Pass' }
+    ],
+    idFeeWaiver: [
+      { Timestamp: '1/10/2026 10:00:00' },
+      { Timestamp: '2/10/2026 10:00:00' }
+    ]
+  };
+
+  const table = buildMetricsTable(datasets, { year: 2026, quarter: 1 });
+  const row = table.rows.find(([name]) => name === 'Benefit applications submitted and services provided');
+  // Jan: 1 CalFresh + 1 ID waiver + UPLIFT 44 + Caltrain 9
+  // Feb: 1 ID waiver + UPLIFT 44 + Caltrain 9
+  // Mar: 1 VI-SPDAT + UPLIFT 44 + Caltrain 9
+  // Q1: 1 CalFresh + 2 ID waivers + 1 VI-SPDAT + UPLIFT 130 + Caltrain 27
+  assert.deepEqual(row, ['Benefit applications submitted and services provided', 161, 55, 54, 54]);
+});
+
+test('Caltrain 100 per year is spread across months so each quarter adds up', () => {
+  const table = buildMetricsTable({}, { year: 2026, startMonth: 1, endMonth: 12 });
+  const row = table.rows.find(([name]) => name === 'Benefit applications submitted and services provided');
+  // Each quarter adds UPLIFT (130 per quarter) plus its Caltrain share: 27, 25, 24, 24 = 100 per year.
+  assert.equal(row[1] - 130, 27);
+  assert.equal(row[5] - 130, 25);
+  assert.equal(row[9] - 130, 24);
+  assert.equal(row[13] - 130, 24);
 });
 
 test('housing applications and retention count exact Program Enrolled matches in range', () => {

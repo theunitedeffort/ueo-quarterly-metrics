@@ -1,6 +1,7 @@
 import pandas as pd
 import argparse
 import calendar
+import math
 from datetime import datetime
 import re
 import os
@@ -96,6 +97,8 @@ id_fee_waiver_file = "ID_Fee_Waiver_Tracking__Responses.csv"
 if not os.path.exists(id_fee_waiver_file):
     if os.path.exists("ID_Fee_Waiver_Tracking_Responses.csv"):
         id_fee_waiver_file = "ID_Fee_Waiver_Tracking_Responses.csv"
+    elif os.path.exists("ID Fee Waiver.csv"):
+        id_fee_waiver_file = "ID Fee Waiver.csv"
 
 if os.path.exists(id_fee_waiver_file):
     df_id_fee_waiver = pd.read_csv(id_fee_waiver_file)
@@ -599,6 +602,47 @@ def count_unique_clients_served(df, end_date):
     return int(record_ids[record_ids != ""].nunique())
 
 
+benefit_services_excluded_programs = [
+    "Homelessness Prevention",
+    "Housing Solution",
+    "VI-SPDAT",
+    "UPLIFT",
+    "LifeLine",
+    "Caltrain",
+    "ID fee waiver",
+]
+
+UPLIFT_QUARTERLY_TOTAL = 130
+UPLIFT_MONTHLY_AMOUNT = math.ceil(UPLIFT_QUARTERLY_TOTAL / 3)
+CALTRAIN_YEARLY_TOTAL = 100
+
+
+def count_benefit_services_programs(df, start_date, end_date):
+    """Count program enrollments that start in the range, excluding housing solution,
+    homelessness prevention, and programs counted separately."""
+    if df.empty:
+        return 0
+    filtered = df[(df["Start Date"] >= start_date) & (df["Start Date"] <= end_date)]
+    if filtered.empty:
+        return 0
+    pattern = "|".join([re.escape(prog) for prog in benefit_services_excluded_programs])
+    excluded = filtered["Program Enrolled"].str.contains(pattern, case=False, na=False)
+    return int((~excluded).sum())
+
+
+def caltrain_monthly_amount(month):
+    """Spread the yearly Caltrain total across 12 months (month is 1-12).
+    Any remainder goes to the first months."""
+    base, extra = divmod(CALTRAIN_YEARLY_TOTAL, 12)
+    return base + (1 if month <= extra else 0)
+
+
+def fixed_benefit_amount(period):
+    """UPLIFT (130 per quarter, 1/3 rounded up per month) plus Caltrain for the period."""
+    uplift = UPLIFT_QUARTERLY_TOTAL if period["type"] == "quarter" else UPLIFT_MONTHLY_AMOUNT
+    return uplift + sum(caltrain_monthly_amount(month) for month in period["months"])
+
+
 def count_housing_applications(df, start_date, end_date):
     if df.empty or "Date Submitted" not in df.columns:
         return 0
@@ -957,6 +1001,14 @@ def calculate_period_metrics(period):
         count_employed_clients(df_employed_2026, start_date, end_date)
     )
 
+    benefit_services_count = (
+        count_benefit_services_programs(df_clients_programs_2026, start_date, end_date)
+        + vi_spdat_count
+        + id_fee_waiver_count
+        + lifeline_count
+        + fixed_benefit_amount(period)
+    )
+
     return [
         int(count_in_range(df_2026, start_date, end_date)),
         int(
@@ -987,6 +1039,7 @@ def calculate_period_metrics(period):
             )
         ),
         benefits_total,
+        benefit_services_count,
         vi_spdat_count,
         lifeline_count,
         id_fee_waiver_count,
@@ -1012,6 +1065,7 @@ metric_names = [
     "Onsite Volunteer hours",
     "Clients active in Self-Sufficiency Program",
     "Benefits & services applications submitted",
+    "Benefit applications submitted and services provided",
     "VI-SPDAT",
     "Lifeline phone giveaway",
     "ID fee waiver",
